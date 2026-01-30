@@ -135,7 +135,7 @@ export const formatCurrency = (
 
 export const computeAutoStatus = (
   dueDate?: string,
-  status?: z.infer<typeof PaymentStatusEnum>,
+  status?: z.infer<typeof PaymentStatusEnum> | string,
 ) => {
   if (!dueDate || !status) return status ?? "RASCUNHO";
   if (status === "PAGO") return status;
