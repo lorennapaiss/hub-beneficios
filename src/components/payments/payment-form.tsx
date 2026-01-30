@@ -50,13 +50,14 @@ const editSchema = PaymentBaseSchema.pick({
 
 type CreateValues = z.infer<typeof createSchema>;
 type EditValues = z.infer<typeof editSchema>;
+type FormValues = CreateValues & EditValues;
 
 type Mode = "create" | "edit";
 
 type PaymentFormProps = {
   mode: Mode;
   paymentId?: string;
-  initialValues?: Partial<CreateValues>;
+  initialValues?: Partial<FormValues>;
 };
 
 type UploadResult = { data: { drive_link?: string } } | null;
@@ -79,7 +80,7 @@ export default function PaymentForm({
     return zodResolver(mode === "create" ? createSchema : editSchema);
   }, [mode]);
 
-  const form = useForm<CreateValues | EditValues>({
+  const form = useForm<FormValues>({
     resolver,
     mode: "onChange",
     defaultValues: {
@@ -89,12 +90,12 @@ export default function PaymentForm({
       subtype: "Saude",
       status: "RASCUNHO",
       ...initialValues,
-    } as CreateValues,
+    } as FormValues,
   });
 
   useEffect(() => {
     if (mode === "edit" && initialValues) {
-      form.reset(initialValues as EditValues);
+      form.reset(initialValues as FormValues);
     }
   }, [form, initialValues, mode]);
 
@@ -123,14 +124,14 @@ export default function PaymentForm({
     }
   };
 
-  const onSubmit = async (values: CreateValues | EditValues) => {
+  const onSubmit = async (values: FormValues) => {
     setSaving(true);
     try {
       if (mode === "create") {
         const response = await request<{ data: { id: string } }>("/api/payments", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(values),
+          body: JSON.stringify(values as CreateValues),
         });
 
         if (file) {
@@ -151,7 +152,7 @@ export default function PaymentForm({
       await request(`/api/payments/${paymentId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
+        body: JSON.stringify(values as EditValues),
       });
 
       pushToast({
