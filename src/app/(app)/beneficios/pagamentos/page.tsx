@@ -28,7 +28,7 @@ type PaymentRow = {
   competence?: string;
   amount?: number;
   due_date?: string;
-  status?: "RASCUNHO" | "EM_ACOMPANHAMENTO" | "AGUARDANDO_PAGAMENTO" | "PAGO" | "ATRASADO";
+  status?: string;
   owner_name?: string;
   owner_email?: string;
   ticket_number?: string;
