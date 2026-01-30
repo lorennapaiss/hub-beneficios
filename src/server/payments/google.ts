@@ -42,7 +42,7 @@ const loadCredentials = () => {
   );
 };
 
-let cachedAuth: ReturnType<typeof google.auth.GoogleAuth> | null = null;
+let cachedAuth: InstanceType<typeof google.auth.GoogleAuth> | null = null;
 
 export const getGoogleAuth = () => {
   if (cachedAuth) return cachedAuth;
