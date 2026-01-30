@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { PaymentBaseSchema, PaymentStatusEnum } from "@/lib/schema";
 import { useApi } from "@/lib/hooks/use-api";
@@ -77,7 +77,9 @@ export default function PaymentForm({
   const [file, setFile] = useState<File | null>(null);
 
   const resolver = useMemo(() => {
-    return zodResolver(mode === "create" ? createSchema : editSchema);
+    return zodResolver(
+      mode === "create" ? createSchema : editSchema,
+    ) as Resolver<FormValues>;
   }, [mode]);
 
   const form = useForm<FormValues>({
