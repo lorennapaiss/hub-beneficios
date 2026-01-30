@@ -79,7 +79,7 @@ export default function PaymentForm({
   const resolver = useMemo(() => {
     return zodResolver(
       mode === "create" ? createSchema : editSchema,
-    ) as Resolver<FormValues>;
+    ) as unknown as Resolver<FormValues>;
   }, [mode]);
 
   const form = useForm<FormValues>({
