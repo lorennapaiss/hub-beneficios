@@ -71,29 +71,36 @@ export const CONFIG_COLUMNS = [
 
 export type PaymentRow = (string | number | null | undefined)[];
 
+const toCellValue = (value: unknown): string | number => {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "number") return value;
+  if (typeof value === "string") return value;
+  return String(value);
+};
+
 export const paymentToRow = (payment: Record<string, unknown>): PaymentRow => [
-  payment.id ?? "",
-  payment.category ?? "",
-  payment.brand ?? "",
-  payment.provider ?? "",
-  payment.provider_custom ?? "",
-  payment.subtype ?? "",
-  payment.competence ?? "",
-  payment.ticket_number ?? "",
-  payment.ticket_sent_date ?? "",
-  payment.due_date ?? "",
-  payment.amount ?? "",
-  payment.status ?? "",
-  payment.owner_name ?? "",
-  payment.owner_email ?? "",
-  payment.drive_file_id ?? "",
-  payment.drive_link ?? "",
-  payment.drive_filename ?? "",
-  payment.created_at ?? "",
-  payment.updated_at ?? "",
-  payment.paid_at ?? "",
-  payment.paid_by ?? "",
-  payment.notes ?? "",
+  toCellValue(payment.id),
+  toCellValue(payment.category),
+  toCellValue(payment.brand),
+  toCellValue(payment.provider),
+  toCellValue(payment.provider_custom),
+  toCellValue(payment.subtype),
+  toCellValue(payment.competence),
+  toCellValue(payment.ticket_number),
+  toCellValue(payment.ticket_sent_date),
+  toCellValue(payment.due_date),
+  toCellValue(payment.amount),
+  toCellValue(payment.status),
+  toCellValue(payment.owner_name),
+  toCellValue(payment.owner_email),
+  toCellValue(payment.drive_file_id),
+  toCellValue(payment.drive_link),
+  toCellValue(payment.drive_filename),
+  toCellValue(payment.created_at),
+  toCellValue(payment.updated_at),
+  toCellValue(payment.paid_at),
+  toCellValue(payment.paid_by),
+  toCellValue(payment.notes),
 ];
 
 export const rowToPayment = (row: string[]) => ({
