@@ -1,4 +1,4 @@
-# Controle de VT Provisorios
+# HUB DE BENEFÍCIOS
 
 App Next.js (App Router) com TypeScript, TailwindCSS e shadcn/ui.
 
