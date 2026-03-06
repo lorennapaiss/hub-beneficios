@@ -37,7 +37,8 @@ const listGeminiModels = async (apiKey: string) => {
 };
 
 const extractGeminiResult = (payload: unknown) => {
-  if (!payload || typeof payload !== "object") return "";
+  const empty = { text: "", finishReason: null as string | null };
+  if (!payload || typeof payload !== "object") return empty;
   const data = payload as {
     candidates?: Array<{
       finishReason?: string;
