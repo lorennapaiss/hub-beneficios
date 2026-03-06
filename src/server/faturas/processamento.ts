@@ -112,6 +112,9 @@ export const processarCompetenciaSulamerica = async (
       contratos.push(
         buildErrorResult({
           operadora: "SULAMERICA",
+          competencia,
+          contrato_codigo: file.contrato_codigo,
+          empresa_nome: file.empresa_nome,
           ...fileInfo,
           error_message: download.error.message,
         }),
@@ -150,6 +153,9 @@ export const processarCompetenciaSulamerica = async (
       contratos.push(
         buildErrorResult({
           operadora: "SULAMERICA",
+          competencia,
+          contrato_codigo: file.contrato_codigo,
+          empresa_nome: file.empresa_nome,
           ...fileInfo,
           error_message: message,
         }),
