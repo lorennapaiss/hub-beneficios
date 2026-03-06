@@ -1,9 +1,10 @@
-import type { LucideIcon } from "lucide-react";
+﻿import type { LucideIcon } from "lucide-react";
 import {
-  Gift,
   Briefcase,
   CreditCard,
+  FileText,
   LayoutDashboard,
+  LineChart,
   Receipt,
   Settings,
   Users,
@@ -12,8 +13,9 @@ import {
 
 export type NavItem = {
   title: string;
-  href: string;
-  icon: LucideIcon;
+  href?: string;
+  icon?: LucideIcon;
+  children?: NavItem[];
 };
 
 export const navItems: NavItem[] = [
@@ -23,24 +25,29 @@ export const navItems: NavItem[] = [
     icon: Briefcase,
   },
   {
-    title: "Benefícios",
-    href: "/beneficios",
-    icon: Gift,
-  },
-  {
-    title: "Dashboard",
-    href: "/dashboard",
-    icon: LayoutDashboard,
-  },
-  {
-    title: "Cartões",
-    href: "/cards",
+    title: "Controle de Provisórios",
     icon: CreditCard,
-  },
-  {
-    title: "Cargas",
-    href: "/loads",
-    icon: Receipt,
+    children: [
+      {
+        title: "Dashboard",
+        href: "/dashboard",
+        icon: LayoutDashboard,
+      },
+      {
+        title: "Cartões",
+        href: "/cards",
+      },
+      {
+        title: "Cargas",
+        href: "/loads",
+        icon: Receipt,
+      },
+      {
+        title: "Pessoas",
+        href: "/people",
+        icon: Users,
+      },
+    ],
   },
   {
     title: "Pagamentos",
@@ -48,9 +55,19 @@ export const navItems: NavItem[] = [
     icon: Wallet,
   },
   {
-    title: "Pessoas",
-    href: "/people",
-    icon: Users,
+    title: "Indicadores",
+    href: "/beneficios/indicadores",
+    icon: LineChart,
+  },
+  {
+    title: "Faturas",
+    icon: FileText,
+    children: [
+      {
+        title: "Análise de Faturas",
+        href: "/faturas/analise",
+      },
+    ],
   },
   {
     title: "Admin",
@@ -58,3 +75,4 @@ export const navItems: NavItem[] = [
     icon: Settings,
   },
 ];
+

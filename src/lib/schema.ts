@@ -108,6 +108,8 @@ export const ConfigSchema = z.object({
   reminder_overdue_every_days: z.number().int().min(1).optional().default(1),
   timezone: z.string().optional().default("America/Sao_Paulo"),
   last_reminder_run_at: z.string().optional(),
+  faturas_sulamerica_base_folder_id: z.string().optional().default(""),
+  competencia_folder_pattern: z.string().optional().default("YYYY-MM"),
 });
 
 export type PaymentInput = z.infer<typeof PaymentSchema>;

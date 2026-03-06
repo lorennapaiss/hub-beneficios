@@ -36,6 +36,7 @@ export const config = {
     "/people/:path*",
     "/loads/:path*",
     "/beneficios/:path*",
+    "/faturas/:path*",
     "/admin/:path*",
   ],
 };

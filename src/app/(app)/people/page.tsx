@@ -6,7 +6,6 @@ import { listPeople } from "@/server/people";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-
 type SearchParams = {
   search?: string;
   marca?: string;
@@ -57,7 +56,7 @@ export default async function PeoplePage({
     <div className="space-y-6">
       <PageHeader
         title="Pessoas"
-        description="Cadastro de colaboradores para alocacoes."
+        description="Cadastro de colaboradores para alocações."
         actions={
           <Button asChild>
             <Link href="/people/new">Nova pessoa</Link>

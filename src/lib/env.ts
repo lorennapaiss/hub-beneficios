@@ -18,7 +18,23 @@ const EnvSchema = z
     DRIVE_FOLDER_ID: z.string().min(1, "DRIVE_FOLDER_ID nao definido."),
     PAYMENTS_SHEETS_ID: z.string().optional(),
     PAYMENTS_DRIVE_FOLDER_ID: z.string().optional(),
+    INDICATORS_SHEETS_ID: z.string().optional(),
+    INDICATORS_HEALTH_SHEETS_ID: z.string().optional(),
+    INDICATORS_DENTAL_SHEETS_ID: z.string().optional(),
+    INDICATORS_TRANSPORT_SHEETS_ID: z.string().optional(),
+    INDICATORS_MEAL_SHEETS_ID: z.string().optional(),
+    INDICATORS_HEALTH_SHEET_NAME: z.string().optional(),
+    INDICATORS_HEALTH_COPART_SHEET_NAME: z.string().optional(),
+    INDICATORS_DENTAL_SHEET_NAME: z.string().optional(),
+    INDICATORS_TRANSPORT_SHEET_NAME: z.string().optional(),
+    INDICATORS_MEAL_SHEET_NAME: z.string().optional(),
+    GEMINI_API_KEY: z.string().optional(),
+    GEMINI_MODEL: z.string().optional(),
+    OPENAI_API_KEY: z.string().optional(),
+    OPENAI_MODEL: z.string().optional(),
     LOW_BALANCE_THRESHOLD: z.string().optional(),
+    FATURAS_SULAMERICA_BASE_FOLDER_ID: z.string().optional(),
+    COMPETENCIA_FOLDER_PATTERN: z.string().optional(),
     ENABLE_SEED: z.string().optional(),
   })
   .superRefine((data, ctx) => {
@@ -51,6 +67,65 @@ export const env = {
   LOW_BALANCE_THRESHOLD:
     (parsed.success ? parsed.data.LOW_BALANCE_THRESHOLD : process.env.LOW_BALANCE_THRESHOLD) ??
     "0",
+  INDICATORS_SHEETS_ID:
+    (parsed.success ? parsed.data.INDICATORS_SHEETS_ID : process.env.INDICATORS_SHEETS_ID) ??
+    (parsed.success ? parsed.data.PAYMENTS_SHEETS_ID : process.env.PAYMENTS_SHEETS_ID) ??
+    (parsed.success ? parsed.data.SHEETS_SPREADSHEET_ID : process.env.SHEETS_SPREADSHEET_ID) ??
+    "",
+  INDICATORS_HEALTH_SHEET_NAME:
+    (parsed.success
+      ? parsed.data.INDICATORS_HEALTH_SHEET_NAME
+      : process.env.INDICATORS_HEALTH_SHEET_NAME) ?? "indicadores_saude",
+  INDICATORS_HEALTH_COPART_SHEET_NAME:
+    (parsed.success
+      ? parsed.data.INDICATORS_HEALTH_COPART_SHEET_NAME
+      : process.env.INDICATORS_HEALTH_COPART_SHEET_NAME) ?? "COPART",
+  INDICATORS_HEALTH_SHEETS_ID:
+    (parsed.success
+      ? parsed.data.INDICATORS_HEALTH_SHEETS_ID
+      : process.env.INDICATORS_HEALTH_SHEETS_ID) ??
+    (parsed.success ? parsed.data.INDICATORS_SHEETS_ID : process.env.INDICATORS_SHEETS_ID) ??
+    "",
+  INDICATORS_DENTAL_SHEET_NAME:
+    (parsed.success
+      ? parsed.data.INDICATORS_DENTAL_SHEET_NAME
+      : process.env.INDICATORS_DENTAL_SHEET_NAME) ?? "indicadores_odontologico",
+  INDICATORS_DENTAL_SHEETS_ID:
+    (parsed.success
+      ? parsed.data.INDICATORS_DENTAL_SHEETS_ID
+      : process.env.INDICATORS_DENTAL_SHEETS_ID) ??
+    (parsed.success ? parsed.data.INDICATORS_SHEETS_ID : process.env.INDICATORS_SHEETS_ID) ??
+    "",
+  INDICATORS_TRANSPORT_SHEET_NAME:
+    (parsed.success
+      ? parsed.data.INDICATORS_TRANSPORT_SHEET_NAME
+      : process.env.INDICATORS_TRANSPORT_SHEET_NAME) ?? "indicadores_vale_transporte",
+  INDICATORS_TRANSPORT_SHEETS_ID:
+    (parsed.success
+      ? parsed.data.INDICATORS_TRANSPORT_SHEETS_ID
+      : process.env.INDICATORS_TRANSPORT_SHEETS_ID) ??
+    (parsed.success ? parsed.data.INDICATORS_SHEETS_ID : process.env.INDICATORS_SHEETS_ID) ??
+    "",
+  INDICATORS_MEAL_SHEET_NAME:
+    (parsed.success
+      ? parsed.data.INDICATORS_MEAL_SHEET_NAME
+      : process.env.INDICATORS_MEAL_SHEET_NAME) ?? "indicadores_vale_refeicao",
+  INDICATORS_MEAL_SHEETS_ID:
+    (parsed.success
+      ? parsed.data.INDICATORS_MEAL_SHEETS_ID
+      : process.env.INDICATORS_MEAL_SHEETS_ID) ??
+    (parsed.success ? parsed.data.INDICATORS_SHEETS_ID : process.env.INDICATORS_SHEETS_ID) ??
+    "",
+  FATURAS_SULAMERICA_BASE_FOLDER_ID:
+    (parsed.success
+      ? parsed.data.FATURAS_SULAMERICA_BASE_FOLDER_ID
+      : process.env.FATURAS_SULAMERICA_BASE_FOLDER_ID) ?? "",
+  COMPETENCIA_FOLDER_PATTERN:
+    (parsed.success
+      ? parsed.data.COMPETENCIA_FOLDER_PATTERN
+      : process.env.COMPETENCIA_FOLDER_PATTERN) ?? "YYYY-MM",
   ENABLE_SEED:
     (parsed.success ? parsed.data.ENABLE_SEED : process.env.ENABLE_SEED) ?? "false",
 };
+
+

@@ -18,7 +18,7 @@ export function AppShell({ children }: PropsWithChildren) {
         <div className="flex min-w-0 flex-1 flex-col">
           <Topbar />
           <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
-            <div className="mx-auto w-full max-w-6xl">
+            <div className="mx-auto w-full max-w-[calc(100vw-2rem)]">
               <div className="glass-card rounded-3xl p-4 sm:p-6">
                 {children}
               </div>

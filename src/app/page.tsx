@@ -144,7 +144,7 @@ export default function HomePage() {
 
             <div className="glass-card float-slow absolute -left-8 top-10 hidden w-44 rounded-2xl p-4 text-sm text-slate-600 shadow-glow lg:block">
               <div className="font-semibold text-slate-900">Cartões</div>
-              <p className="text-xs text-slate-500">Alocacoes em dia</p>
+              <p className="text-xs text-slate-500">Alocações em dia</p>
             </div>
             <div className="glass-card float-delayed absolute -right-6 bottom-6 hidden w-48 rounded-2xl p-4 text-sm text-slate-600 shadow-glow lg:block">
               <div className="font-semibold text-slate-900">Pagamentos</div>

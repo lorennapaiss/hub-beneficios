@@ -49,6 +49,14 @@ const getEnvStatus = () => {
     { label: "DRIVE_FOLDER_ID", ok: Boolean(env.DRIVE_FOLDER_ID) },
     { label: "PAYMENTS_SHEETS_ID", ok: Boolean(env.PAYMENTS_SHEETS_ID) },
     { label: "PAYMENTS_DRIVE_FOLDER_ID", ok: Boolean(env.PAYMENTS_DRIVE_FOLDER_ID) },
+    {
+      label: "FATURAS_SULAMERICA_BASE_FOLDER_ID",
+      ok: Boolean(env.FATURAS_SULAMERICA_BASE_FOLDER_ID),
+    },
+    {
+      label: "COMPETENCIA_FOLDER_PATTERN",
+      ok: Boolean(env.COMPETENCIA_FOLDER_PATTERN),
+    },
     { label: "LOW_BALANCE_THRESHOLD", ok: Boolean(env.LOW_BALANCE_THRESHOLD) },
     { label: "ENABLE_SEED", ok: Boolean(env.ENABLE_SEED) },
   ];

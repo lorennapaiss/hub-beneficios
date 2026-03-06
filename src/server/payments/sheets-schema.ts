@@ -67,9 +67,41 @@ export const CONFIG_COLUMNS = [
   "reminder_overdue_every_days",
   "timezone",
   "last_reminder_run_at",
+  "faturas_sulamerica_base_folder_id",
+  "competencia_folder_pattern",
+] as const;
+
+export const FATURAS_CONTRATOS_COLUMNS = [
+  "competencia",
+  "operadora",
+  "contrato_codigo",
+  "empresa_nome",
+  "vidas_ativas",
+  "custo_total",
+  "custo_por_contrato",
+  "file_id",
+  "modified_time",
+  "processed_at",
+  "status",
+  "error_message",
+] as const;
+
+export const FATURAS_EXECUCOES_COLUMNS = [
+  "competencia",
+  "processed_at",
+  "actor_email",
+  "actor_name",
+  "status",
+  "duration_ms",
+  "contratos_ok",
+  "contratos_erro",
+  "total_vidas",
+  "total_custo",
 ] as const;
 
 export type PaymentRow = (string | number | null | undefined)[];
+export type FaturasContratoRow = (string | number | null | undefined)[];
+export type FaturasExecucaoRow = (string | number | null | undefined)[];
 
 const toCellValue = (value: unknown): string | number => {
   if (value === null || value === undefined) return "";
@@ -198,6 +230,8 @@ export const configToRow = (config: Record<string, unknown>) => [
   config.reminder_overdue_every_days ?? "",
   config.timezone ?? "",
   config.last_reminder_run_at ?? "",
+  config.faturas_sulamerica_base_folder_id ?? "",
+  config.competencia_folder_pattern ?? "",
 ];
 
 export const rowToConfig = (row: string[]) => ({
@@ -220,4 +254,62 @@ export const rowToConfig = (row: string[]) => ({
   reminder_overdue_every_days: row[14] ? Number(row[14]) : 1,
   timezone: row[15] || "America/Sao_Paulo",
   last_reminder_run_at: row[16] || undefined,
+  faturas_sulamerica_base_folder_id: row[17] || "",
+  competencia_folder_pattern: row[18] || "YYYY-MM",
+});
+
+export const faturasContratoToRow = (record: Record<string, unknown>) => [
+  record.competencia ?? "",
+  record.operadora ?? "",
+  record.contrato_codigo ?? "",
+  record.empresa_nome ?? "",
+  record.vidas_ativas ?? "",
+  record.custo_total ?? "",
+  record.custo_por_contrato ?? "",
+  record.file_id ?? "",
+  record.modified_time ?? "",
+  record.processed_at ?? "",
+  record.status ?? "",
+  record.error_message ?? "",
+];
+
+export const rowToFaturasContrato = (row: string[]) => ({
+  competencia: row[0] || "",
+  operadora: row[1] || "",
+  contrato_codigo: row[2] || "",
+  empresa_nome: row[3] || "",
+  vidas_ativas: row[4] ? Number(row[4]) : 0,
+  custo_total: row[5] ? Number(row[5]) : 0,
+  custo_por_contrato: row[6] ? Number(row[6]) : 0,
+  file_id: row[7] || "",
+  modified_time: row[8] || "",
+  processed_at: row[9] || "",
+  status: row[10] || "",
+  error_message: row[11] || "",
+});
+
+export const faturasExecucaoToRow = (record: Record<string, unknown>) => [
+  record.competencia ?? "",
+  record.processed_at ?? "",
+  record.actor_email ?? "",
+  record.actor_name ?? "",
+  record.status ?? "",
+  record.duration_ms ?? "",
+  record.contratos_ok ?? "",
+  record.contratos_erro ?? "",
+  record.total_vidas ?? "",
+  record.total_custo ?? "",
+];
+
+export const rowToFaturasExecucao = (row: string[]) => ({
+  competencia: row[0] || "",
+  processed_at: row[1] || "",
+  actor_email: row[2] || "",
+  actor_name: row[3] || "",
+  status: row[4] || "",
+  duration_ms: row[5] ? Number(row[5]) : 0,
+  contratos_ok: row[6] ? Number(row[6]) : 0,
+  contratos_erro: row[7] ? Number(row[7]) : 0,
+  total_vidas: row[8] ? Number(row[8]) : 0,
+  total_custo: row[9] ? Number(row[9]) : 0,
 });

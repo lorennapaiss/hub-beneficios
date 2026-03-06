@@ -157,6 +157,97 @@
     animation: float-slow 12s ease-in-out infinite;
     animation-delay: 1.5s;
   }
+
+  .indicator-shell {
+    @apply rounded-2xl bg-[#f8fafc] p-4 md:p-6;
+  }
+  .indicator-filterbar {
+    @apply flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm;
+  }
+  .indicator-alert {
+    @apply rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900;
+  }
+  .indicator-kpi-hero {
+    @apply rounded-2xl border border-slate-200 bg-white p-5 shadow-sm;
+  }
+  .indicator-kpi-card {
+    @apply rounded-2xl border border-slate-200 bg-white p-4 shadow-sm;
+  }
+  .indicator-kpi-label {
+    @apply text-xs font-semibold uppercase tracking-[0.08em] text-slate-500;
+  }
+  .indicator-kpi-value {
+    @apply mt-1 text-4xl font-semibold leading-tight text-slate-900;
+  }
+  .indicator-page {
+    @apply space-y-4;
+  }
+  .indicator-page section.rounded-2xl {
+    @apply border-slate-200 bg-white shadow-sm;
+  }
+  .indicator-page .rounded-xl.border {
+    @apply border-slate-200;
+  }
+  .indicator-page .text-muted-foreground {
+    @apply text-slate-500;
+  }
+  .indicator-metric {
+    @apply rounded-xl border p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md;
+  }
+  .indicator-metric-icon {
+    @apply mb-1 inline-flex h-7 w-7 items-center justify-center rounded-md border;
+  }
+  .indicator-metric-cost {
+    @apply border-sky-200 bg-gradient-to-br from-sky-50 to-white;
+  }
+  .indicator-metric-cost .indicator-metric-icon {
+    @apply border-sky-200 bg-sky-100 text-sky-700;
+  }
+  .indicator-metric-people {
+    @apply border-indigo-200 bg-gradient-to-br from-indigo-50 to-white;
+  }
+  .indicator-metric-people .indicator-metric-icon {
+    @apply border-indigo-200 bg-indigo-100 text-indigo-700;
+  }
+  .indicator-metric-economy {
+    @apply border-emerald-200 bg-gradient-to-br from-emerald-50 to-white;
+  }
+  .indicator-metric-economy .indicator-metric-icon {
+    @apply border-emerald-200 bg-emerald-100 text-emerald-700;
+  }
+  .indicator-metric-percent {
+    @apply border-amber-200 bg-gradient-to-br from-amber-50 to-white;
+  }
+  .indicator-metric-percent .indicator-metric-icon {
+    @apply border-amber-200 bg-amber-100 text-amber-700;
+  }
+  .indicator-metric-neutral {
+    @apply border-slate-200 bg-gradient-to-br from-slate-50 to-white;
+  }
+  .indicator-metric-neutral .indicator-metric-icon {
+    @apply border-slate-200 bg-slate-100 text-slate-700;
+  }
+  .indicator-layout-a .indicator-page {
+    @apply space-y-5;
+  }
+  .indicator-layout-a .indicator-kpi-value {
+    @apply text-[2.25rem];
+  }
+  .indicator-layout-b .indicator-page {
+    @apply space-y-4;
+  }
+  .indicator-layout-c .indicator-kpi-hero {
+    @apply border-slate-300 bg-slate-900 text-slate-50;
+  }
+  .indicator-layout-c .indicator-kpi-hero .indicator-kpi-label {
+    @apply text-slate-300;
+  }
+  .indicator-layout-c .indicator-kpi-hero .indicator-kpi-value {
+    @apply text-white;
+  }
+  .indicator-layout-c .indicator-kpi-card {
+    @apply border-slate-300;
+  }
 }
 
 @keyframes float-slow {
