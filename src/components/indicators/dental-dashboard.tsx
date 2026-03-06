@@ -170,10 +170,12 @@ export function DentalDashboard({ records, mode = "B" }: DentalDashboardProps) {
     [year, month, brand, operator, plan, debouncedPerson, metrics, filtered.length],
   );
 
-  const maxFromList = (items: Array<{ value: number }> | ReadonlyArray<readonly [string, number]>) => {
-    const values = Array.isArray(items) && items.length > 0
-      ? (items[0] && typeof items[0] === "object" && "value" in items[0]
-          ? (items as Array<{ value: number }>).map((i) => i.value)
+  const maxFromList = (
+    items: ReadonlyArray<{ value: number }> | ReadonlyArray<readonly [string, number]>,
+  ) => {
+    const values = items.length
+      ? (typeof items[0] === "object" && "value" in items[0]
+          ? (items as ReadonlyArray<{ value: number }>).map((i) => i.value)
           : (items as ReadonlyArray<readonly [string, number]>).map((i) => i[1]))
       : [1];
     return Math.max(...values, 1);
