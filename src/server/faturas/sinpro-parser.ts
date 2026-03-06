@@ -95,7 +95,11 @@ export const parseSinproXlsx = (
   bytes: Buffer | ArrayBuffer | Uint8Array,
 ): SinproParseResult => {
   try {
-    const buffer = Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes);
+    const buffer = Buffer.isBuffer(bytes)
+      ? bytes
+      : bytes instanceof ArrayBuffer
+        ? Buffer.from(new Uint8Array(bytes))
+        : Buffer.from(bytes);
     const workbook = XLSX.read(buffer, { type: "buffer" });
     const sheetName = workbook.SheetNames[0];
 
