@@ -350,7 +350,7 @@ export function AnaliseFaturasClient({ isAdmin }: AnaliseClientProps) {
         description="Processamento e leitura de faturas por competência."
         actions={
           <div className="flex items-center gap-2">
-            <Badge variant="secondary">VIEW</Badge>
+            <Badge className="bg-slate-100 text-slate-700">VIEW</Badge>
             {isAdmin ? <Badge>ADMIN</Badge> : null}
             <Button
               size="sm"
