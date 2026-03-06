@@ -175,20 +175,9 @@ export const processarCompetenciaSulamerica = async (
       : parsedUni?.ok
         ? "UNIMED_POA"
         : "SINPRO";
-    const rows =
-      operadora === "SULAMERICA"
-        ? parsedSul.ok
-          ? parsedSul.rows
-          : []
-        : operadora === "UNIMED_POA"
-          ? parsedUni && parsedUni.ok
-            ? parsedUni.rows
-            : []
-          : parsedSin && parsedSin.ok
-            ? parsedSin.rows
-            : [];
 
     if (operadora === "UNIMED_POA") {
+      const rows = parsedUni && parsedUni.ok ? parsedUni.rows : [];
       const grouped = new Map<
         string,
         { empresa_nome: string; rows: typeof rows }
@@ -245,6 +234,7 @@ export const processarCompetenciaSulamerica = async (
         });
       }
     } else if (operadora === "SINPRO") {
+      const rows = parsedSin && parsedSin.ok ? parsedSin.rows : [];
       const grouped = new Map<
         string,
         { empresa_nome: string; rows: typeof rows }
@@ -310,6 +300,7 @@ export const processarCompetenciaSulamerica = async (
     } else {
       const contratoCodigo = file.contrato_codigo;
       const empresaNome = file.empresa_nome;
+      const rows = parsedSul.ok ? parsedSul.rows : [];
       const metrics = computeSulamericaContratoMetrics({
         contrato_codigo: contratoCodigo,
         empresa_nome: empresaNome,
