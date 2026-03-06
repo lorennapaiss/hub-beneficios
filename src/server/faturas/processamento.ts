@@ -181,7 +181,9 @@ export const processarCompetenciaSulamerica = async (
           ? parsedSul.rows
           : []
         : operadora === "UNIMED_POA"
-          ? parsedUni!.rows
+          ? parsedUni && parsedUni.ok
+            ? parsedUni.rows
+            : []
           : parsedSin!.rows;
 
     if (operadora === "UNIMED_POA") {
