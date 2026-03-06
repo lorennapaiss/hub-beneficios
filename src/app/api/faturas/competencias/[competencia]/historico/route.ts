@@ -2,15 +2,9 @@ import { NextResponse } from "next/server";
 import { requireAllowedUser, handleApiError } from "@/server/payments/api-utils";
 import { listFaturasContratosByCompetencia } from "@/server/faturas/storage";
 
-type RouteContext = {
-  params: {
-    competencia: string;
-  };
-};
-
 export async function GET(
   _request: Request,
-  { params }: RouteContext,
+  { params }: { params: { competencia: string } },
 ) {
   const { response } = await requireAllowedUser();
   if (response) return response;
