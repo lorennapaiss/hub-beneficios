@@ -177,7 +177,9 @@ export const processarCompetenciaSulamerica = async (
         : "SINPRO";
     const rows =
       operadora === "SULAMERICA"
-        ? parsedSul.rows
+        ? parsedSul.ok
+          ? parsedSul.rows
+          : []
         : operadora === "UNIMED_POA"
           ? parsedUni!.rows
           : parsedSin!.rows;
