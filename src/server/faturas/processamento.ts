@@ -184,7 +184,9 @@ export const processarCompetenciaSulamerica = async (
           ? parsedUni && parsedUni.ok
             ? parsedUni.rows
             : []
-          : parsedSin!.rows;
+          : parsedSin && parsedSin.ok
+            ? parsedSin.rows
+            : [];
 
     if (operadora === "UNIMED_POA") {
       const grouped = new Map<
