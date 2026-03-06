@@ -50,6 +50,7 @@ const roundCurrency = (value: number) =>
   Math.round((value + Number.EPSILON) * 100) / 100;
 
 const buildErrorResult = ({
+  operadora,
   competencia,
   contrato_codigo,
   empresa_nome,
@@ -59,6 +60,7 @@ const buildErrorResult = ({
   modified_time,
   web_view_link,
 }: {
+  operadora: "SULAMERICA" | "UNIMED_POA" | "SINPRO";
   competencia: string;
   contrato_codigo: string;
   empresa_nome: string;
@@ -68,6 +70,7 @@ const buildErrorResult = ({
   modified_time?: string;
   web_view_link?: string;
 }): FaturasContratoResultado => ({
+  operadora,
   contrato_codigo,
   empresa_nome,
   competencia,
@@ -108,6 +111,7 @@ export const processarCompetenciaSulamerica = async (
     if (!download.ok) {
       contratos.push(
         buildErrorResult({
+          operadora: "SULAMERICA",
           ...fileInfo,
           error_message: download.error.message,
         }),
@@ -145,9 +149,10 @@ export const processarCompetenciaSulamerica = async (
 
       contratos.push(
         buildErrorResult({
-        ...fileInfo,
-        error_message: message,
-      }),
+          operadora: "SULAMERICA",
+          ...fileInfo,
+          error_message: message,
+        }),
       );
       logger.warn("[faturas] contrato processado", {
         competencia,
