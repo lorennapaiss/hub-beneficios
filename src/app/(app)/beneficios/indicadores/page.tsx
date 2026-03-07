@@ -2,7 +2,7 @@ import { PageHeader } from "@/components/page-header";
 import { IndicatorsWorkspace } from "@/components/indicators/workspace";
 import { getIndicatorsDashboardData } from "@/server/indicators/dashboard";
 
-export const revalidate = 600;
+export const dynamic = "force-dynamic";
 
 export default async function IndicadoresPage() {
   const dashboard = await getIndicatorsDashboardData();
