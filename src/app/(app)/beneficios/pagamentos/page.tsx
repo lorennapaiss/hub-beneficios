@@ -38,6 +38,7 @@ export default function DashboardPage() {
   const { request } = useApi();
   const [payments, setPayments] = useState<PaymentRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const patchedRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
@@ -92,6 +93,7 @@ export default function DashboardPage() {
 
     const load = async () => {
       setLoading(true);
+      setError(null);
       try {
         const response = await request<{ data: PaymentRow[] }>("/api/payments");
         const computed = response.data.map((row) => ({
@@ -104,6 +106,15 @@ export default function DashboardPage() {
         }
 
         await persistOverdue(response.data);
+      } catch (error) {
+        if (mounted) {
+          setPayments([]);
+          setError(
+            error instanceof Error
+              ? error.message
+              : "Nao foi possivel carregar os pagamentos.",
+          );
+        }
       } finally {
         if (mounted) setLoading(false);
       }
@@ -152,6 +163,22 @@ export default function DashboardPage() {
 
   if (loading) {
     return <p className="text-sm text-muted-foreground">Carregando dashboard...</p>;
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-4">
+        <div>
+          <h1 className="text-2xl font-semibold">Pagamentos</h1>
+          <p className="text-sm text-muted-foreground">
+            Visao geral dos pagamentos e pendencias.
+          </p>
+        </div>
+        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          {error}
+        </div>
+      </div>
+    );
   }
 
   return (

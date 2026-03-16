@@ -1,4 +1,6 @@
 import { google } from "googleapis";
+import { env } from "@/lib/env";
+import { ApiError } from "@/server/payments/errors";
 import { getGoogleAuth } from "@/server/payments/google";
 import {
   paymentToRow,
@@ -12,6 +14,64 @@ import { getRowRange } from "@/server/payments/sheets-utils";
 
 export const getSheetsClient = () =>
   google.sheets({ version: "v4", auth: getGoogleAuth() });
+
+const getErrorStatus = (error: unknown) =>
+  (error as { response?: { status?: number } })?.response?.status;
+
+const getErrorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : "Erro desconhecido ao acessar o Google Sheets.";
+
+const resolvePaymentsSheetId = (sheetId?: string) => {
+  const resolved = sheetId?.trim() || env.PAYMENTS_SHEETS_ID?.trim() || "";
+  if (!resolved) {
+    throw new ApiError(
+      "PAYMENTS_SHEETS_ID nao definido. Configure a planilha do modulo de pagamentos.",
+      500,
+      "PAYMENTS_SHEETS_ID_MISSING",
+    );
+  }
+  return resolved;
+};
+
+const toApiError = (
+  error: unknown,
+  action: "ler" | "gravar" | "atualizar",
+  range: string,
+) => {
+  const status = getErrorStatus(error);
+  const message = getErrorMessage(error);
+  const sheetName = range.split("!")[0] ?? "payments";
+
+  if (status === 404 || message.includes("Requested entity was not found")) {
+    return new ApiError(
+      "Planilha de pagamentos nao encontrada. Verifique PAYMENTS_SHEETS_ID e se a service account tem acesso.",
+      500,
+      "PAYMENTS_SHEETS_NOT_FOUND",
+    );
+  }
+
+  if (status === 403 || message.includes("does not have permission")) {
+    return new ApiError(
+      `A service account nao tem permissao para acessar a planilha de pagamentos. Compartilhe a planilha com ${env.GOOGLE_SERVICE_ACCOUNT_EMAIL}.`,
+      500,
+      "PAYMENTS_SHEETS_FORBIDDEN",
+    );
+  }
+
+  if (message.includes("Unable to parse range")) {
+    return new ApiError(
+      `A aba "${sheetName}" nao foi encontrada na planilha de pagamentos.`,
+      500,
+      "PAYMENTS_RANGE_NOT_FOUND",
+    );
+  }
+
+  return new ApiError(
+    `Erro ao ${action} dados da planilha de pagamentos: ${message}`,
+    500,
+    "PAYMENTS_SHEETS_ERROR",
+  );
+};
 
 const parseRowNumber = (updatedRange?: string) => {
   if (!updatedRange) return undefined;
@@ -27,9 +87,10 @@ export const appendPaymentRow = async (
   payment: Record<string, unknown>,
 ) => {
   try {
+    const resolvedSheetId = resolvePaymentsSheetId(sheetId);
     const sheets = getSheetsClient();
     const response = await sheets.spreadsheets.values.append({
-      spreadsheetId: sheetId,
+      spreadsheetId: resolvedSheetId,
       range,
       valueInputOption: "USER_ENTERED",
       insertDataOption: "INSERT_ROWS",
@@ -46,7 +107,7 @@ export const appendPaymentRow = async (
     return { updatedRange, rowNumber };
   } catch (error) {
     logger.error("[sheets] appendPaymentRow error", { error });
-    throw error;
+    throw toApiError(error, "gravar", range);
   }
 };
 
@@ -56,9 +117,10 @@ export const updatePaymentRow = async (
   payment: Record<string, unknown>,
 ) => {
   try {
+    const resolvedSheetId = resolvePaymentsSheetId(sheetId);
     const sheets = getSheetsClient();
     const response = await sheets.spreadsheets.values.update({
-      spreadsheetId: sheetId,
+      spreadsheetId: resolvedSheetId,
       range,
       valueInputOption: "USER_ENTERED",
       requestBody: {
@@ -69,22 +131,23 @@ export const updatePaymentRow = async (
     return response.data.updatedRange ?? range;
   } catch (error) {
     logger.error("[sheets] updatePaymentRow error", { error });
-    throw error;
+    throw toApiError(error, "atualizar", range);
   }
 };
 
 export const getPayments = async (sheetId: string, range: string) => {
   try {
+    const resolvedSheetId = resolvePaymentsSheetId(sheetId);
     const sheets = getSheetsClient();
     const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: sheetId,
+      spreadsheetId: resolvedSheetId,
       range,
     });
 
     return response.data.values ?? [];
   } catch (error) {
     logger.error("[sheets] getPayments error", { error });
-    throw error;
+    throw toApiError(error, "ler", range);
   }
 };
 
@@ -94,9 +157,10 @@ export const appendAuditLog = async (
   audit: Record<string, unknown>,
 ) => {
   try {
+    const resolvedSheetId = resolvePaymentsSheetId(sheetId);
     const sheets = getSheetsClient();
     const response = await sheets.spreadsheets.values.append({
-      spreadsheetId: sheetId,
+      spreadsheetId: resolvedSheetId,
       range,
       valueInputOption: "USER_ENTERED",
       insertDataOption: "INSERT_ROWS",
@@ -110,7 +174,7 @@ export const appendAuditLog = async (
     return { updatedRange, rowNumber };
   } catch (error) {
     logger.error("[sheets] appendAuditLog error", { error });
-    throw error;
+    throw toApiError(error, "gravar", range);
   }
 };
 
@@ -120,9 +184,10 @@ export const appendReminderLedger = async (
   ledger: Record<string, unknown>,
 ) => {
   try {
+    const resolvedSheetId = resolvePaymentsSheetId(sheetId);
     const sheets = getSheetsClient();
     const response = await sheets.spreadsheets.values.append({
-      spreadsheetId: sheetId,
+      spreadsheetId: resolvedSheetId,
       range,
       valueInputOption: "USER_ENTERED",
       insertDataOption: "INSERT_ROWS",
@@ -136,7 +201,7 @@ export const appendReminderLedger = async (
     return { updatedRange, rowNumber };
   } catch (error) {
     logger.error("[sheets] appendReminderLedger error", { error });
-    throw error;
+    throw toApiError(error, "gravar", range);
   }
 };
 
@@ -159,12 +224,13 @@ export const upsertConfig = async (
   config: Record<string, unknown>,
 ) => {
   try {
+    const resolvedSheetId = resolvePaymentsSheetId(sheetId);
     const values = await getPayments(sheetId, range);
     const sheets = getSheetsClient();
 
     if (values.length < 2) {
       const response = await sheets.spreadsheets.values.append({
-        spreadsheetId: sheetId,
+        spreadsheetId: resolvedSheetId,
         range,
         valueInputOption: "USER_ENTERED",
         insertDataOption: "INSERT_ROWS",
@@ -176,7 +242,7 @@ export const upsertConfig = async (
     }
 
     const response = await sheets.spreadsheets.values.update({
-      spreadsheetId: sheetId,
+      spreadsheetId: resolvedSheetId,
       range: rowRange,
       valueInputOption: "USER_ENTERED",
       requestBody: {
@@ -187,7 +253,7 @@ export const upsertConfig = async (
     return response.data.updatedRange ?? rowRange;
   } catch (error) {
     logger.error("[sheets] upsertConfig error", { error });
-    throw error;
+    throw toApiError(error, "atualizar", rowRange);
   }
 };
 
@@ -198,9 +264,10 @@ const getRowValues = async (
   columnCount: number,
 ) => {
   const range = getRowRange(sheetName, rowNumber, columnCount);
+  const resolvedSheetId = resolvePaymentsSheetId(sheetId);
   const sheets = getSheetsClient();
   const response = await sheets.spreadsheets.values.get({
-    spreadsheetId: sheetId,
+    spreadsheetId: resolvedSheetId,
     range,
   });
   return response.data.values?.[0] ?? null;
