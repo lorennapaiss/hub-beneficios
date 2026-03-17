@@ -108,6 +108,9 @@ export function PjImportDialog() {
             <Button asChild variant="outline">
               <Link href="/api/pjs/import/template">Baixar template CSV</Link>
             </Button>
+            <Button asChild variant="outline">
+              <Link href="/pjs/manual/csv">Manual do CSV</Link>
+            </Button>
             <input
               ref={inputRef}
               type="file"

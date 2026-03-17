@@ -79,7 +79,7 @@ export default async function PjsPage({
         actions={
           <div className="flex gap-2">
             <Button asChild variant="outline">
-              <Link href="/pjs/manual">Manual</Link>
+              <Link href="/pjs/manual/csv">Manual CSV</Link>
             </Button>
             <PjImportDialog />
             <Button asChild variant="outline">
