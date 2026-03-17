@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createUuid } from "@/lib/uuid";
-import type { PjInput } from "@/lib/schemas/pj";
+import type { PjBenefitConfig, PjBenefits, PjInput } from "@/lib/schemas/pj";
 import {
   listPjHealthDescriptiveHistory,
   type PjHealthDescriptiveHistoryRow,
@@ -161,6 +161,28 @@ export type PjDetail = {
   descriptiveHistory: PjHealthDescriptiveHistoryRow[];
 };
 
+const BENEFIT_FIELD_MAP = {
+  plano_saude: {
+    label: "PLANO_SAUDE",
+    elegivelField: "elegivel_plano_saude",
+  },
+  plano_odontologico: {
+    label: "PLANO_ODONTO",
+    elegivelField: "elegivel_plano_odontologico",
+  },
+  vt: {
+    label: "VT",
+    elegivelField: "elegivel_vt",
+  },
+  vr_va: {
+    label: "VR_VA",
+    elegivelField: "elegivel_vr_va",
+  },
+} satisfies Record<
+  keyof PjBenefits,
+  { label: string; elegivelField: keyof Pick<PjRow, "elegivel_plano_saude" | "elegivel_plano_odontologico" | "elegivel_vt" | "elegivel_vr_va"> }
+>;
+
 const normalize = (value?: string | null) => value?.trim() ?? "";
 const getNow = () => new Date().toISOString();
 const isMissingSheetError = (error: unknown) => {
@@ -194,6 +216,67 @@ const parseNumber = (value?: string | null) => {
 };
 const parseBoolean = (value?: string | null) => normalize(value).toLowerCase() === "true";
 const isActiveStatus = (value: string) => ["ATIVO", "EM_ATIVACAO"].includes(value);
+
+const sanitizeBenefit = (benefit: PjBenefitConfig): PjBenefitConfig => ({
+  ...benefit,
+  fornecedor: normalize(benefit.fornecedor),
+  produto_plano: normalize(benefit.produto_plano),
+  tipo_custeio: normalize(benefit.tipo_custeio),
+  data_inclusao: normalize(benefit.data_inclusao),
+  data_exclusao: normalize(benefit.data_exclusao),
+  observacoes_regra: normalize(benefit.observacoes_regra),
+});
+
+const getBenefitEntries = (beneficios: PjBenefits) =>
+  (Object.entries(beneficios) as Array<[keyof PjBenefits, PjBenefitConfig]>).map(
+    ([key, value]) => [key, value] as const,
+  );
+
+const hasConfiguredBenefitData = (benefit: PjBenefitConfig) =>
+  benefit.elegivel ||
+  benefit.status !== "NAO_CONCEDIDO" ||
+  Boolean(
+    normalize(benefit.fornecedor) ||
+      normalize(benefit.produto_plano) ||
+      normalize(benefit.tipo_custeio) ||
+      normalize(benefit.data_inclusao) ||
+      normalize(benefit.data_exclusao) ||
+      normalize(benefit.observacoes_regra),
+  ) ||
+  benefit.subsidio_empresa > 0 ||
+  benefit.custo_mensal > 0 ||
+  benefit.coparticipacao_aplicavel;
+
+const getPrimaryBenefit = (beneficios: PjBenefits) =>
+  beneficios.plano_saude.elegivel || hasConfiguredBenefitData(beneficios.plano_saude)
+    ? beneficios.plano_saude
+    : getBenefitEntries(beneficios).find(([, benefit]) => hasConfiguredBenefitData(benefit))?.[1] ??
+      beneficios.plano_saude;
+
+const getBenefitSummary = (beneficios: PjBenefits) => {
+  const configured = getBenefitEntries(beneficios).filter(([, benefit]) => hasConfiguredBenefitData(benefit));
+  const active = configured.filter(([, benefit]) => benefit.status === "ATIVO");
+  const primary = getPrimaryBenefit(beneficios);
+  const benefitNames = active.length > 0 ? active : configured;
+
+  return {
+    beneficios_concedidos_resumo: benefitNames
+      .map(([key]) => BENEFIT_FIELD_MAP[key].label)
+      .join(", "),
+    fornecedor_beneficio: normalize(primary.fornecedor),
+    produto_plano: normalize(primary.produto_plano),
+    data_inclusao_beneficio: normalize(primary.data_inclusao),
+    data_exclusao_beneficio: normalize(primary.data_exclusao),
+    tipo_custeio: normalize(primary.tipo_custeio),
+    subsidio_empresa: String(primary.subsidio_empresa),
+    coparticipacao_aplicavel: String(primary.coparticipacao_aplicavel),
+    status_beneficio: primary.status,
+    observacoes_regra: normalize(primary.observacoes_regra),
+    custo_beneficios_mensal: String(
+      getBenefitEntries(beneficios).reduce((total, [, benefit]) => total + benefit.custo_mensal, 0),
+    ),
+  };
+};
 
 const appendAudit = async (
   action: "CREATE" | "UPDATE",
@@ -251,14 +334,12 @@ const sanitizeInput = (data: PjInput) => ({
   status_pagamento: normalize(data.status_pagamento),
   ultima_competencia_paga: normalize(data.ultima_competencia_paga),
   observacoes_financeiras: normalize(data.observacoes_financeiras),
-  beneficios_concedidos_resumo: normalize(data.beneficios_concedidos_resumo),
-  fornecedor_beneficio: normalize(data.fornecedor_beneficio),
-  produto_plano: normalize(data.produto_plano),
-  data_inclusao_beneficio: normalize(data.data_inclusao_beneficio),
-  data_exclusao_beneficio: normalize(data.data_exclusao_beneficio),
-  tipo_custeio: normalize(data.tipo_custeio),
-  status_beneficio: normalize(data.status_beneficio),
-  observacoes_regra: normalize(data.observacoes_regra),
+  beneficios: {
+    plano_saude: sanitizeBenefit(data.beneficios.plano_saude),
+    plano_odontologico: sanitizeBenefit(data.beneficios.plano_odontologico),
+    vt: sanitizeBenefit(data.beneficios.vt),
+    vr_va: sanitizeBenefit(data.beneficios.vr_va),
+  },
 });
 
 const toPjRow = (
@@ -268,6 +349,7 @@ const toPjRow = (
   now: string,
   existing?: PjRow,
 ): PjRow => ({
+  ...getBenefitSummary(input.beneficios),
   pj_id: pjId,
   nome_completo: input.nome_completo,
   nome_social: input.nome_social,
@@ -309,21 +391,10 @@ const toPjRow = (
   status_pagamento: input.status_pagamento,
   ultima_competencia_paga: input.ultima_competencia_paga,
   observacoes_financeiras: input.observacoes_financeiras,
-  elegivel_plano_saude: String(input.elegivel_plano_saude),
-  elegivel_plano_odontologico: String(input.elegivel_plano_odontologico),
-  elegivel_vt: String(input.elegivel_vt),
-  elegivel_vr_va: String(input.elegivel_vr_va),
-  beneficios_concedidos_resumo: input.beneficios_concedidos_resumo,
-  fornecedor_beneficio: input.fornecedor_beneficio,
-  produto_plano: input.produto_plano,
-  data_inclusao_beneficio: input.data_inclusao_beneficio,
-  data_exclusao_beneficio: input.data_exclusao_beneficio,
-  tipo_custeio: input.tipo_custeio,
-  subsidio_empresa: String(input.subsidio_empresa),
-  coparticipacao_aplicavel: String(input.coparticipacao_aplicavel),
-  status_beneficio: input.status_beneficio,
-  observacoes_regra: input.observacoes_regra,
-  custo_beneficios_mensal: String(input.custo_beneficios_mensal),
+  elegivel_plano_saude: String(input.beneficios.plano_saude.elegivel),
+  elegivel_plano_odontologico: String(input.beneficios.plano_odontologico.elegivel),
+  elegivel_vt: String(input.beneficios.vt.elegivel),
+  elegivel_vr_va: String(input.beneficios.vr_va.elegivel),
   documentacao_pendente: String(input.documentacao_pendente),
   created_at: existing?.created_at ?? now,
   created_by: existing?.created_by ?? actor,
@@ -419,37 +490,24 @@ const appendBenefitHistory = async (
   input: ReturnType<typeof sanitizeInput>,
   actor: string,
 ) => {
-  const benefitFlags = [
-    { nome: "PLANO_SAUDE", elegivel: input.elegivel_plano_saude },
-    { nome: "PLANO_ODONTO", elegivel: input.elegivel_plano_odontologico },
-    { nome: "VT", elegivel: input.elegivel_vt },
-    { nome: "VR_VA", elegivel: input.elegivel_vr_va },
-  ];
+  for (const [benefitKey, benefit] of getBenefitEntries(input.beneficios)) {
+    if (!hasConfiguredBenefitData(benefit)) continue;
 
-  const activeBenefitName =
-    input.beneficios_concedidos_resumo.split(",").map((item) => item.trim()).filter(Boolean)[0] ??
-    "CONFIGURACAO_GERAL";
-
-  for (const benefit of benefitFlags) {
-    if (!benefit.elegivel && input.status_beneficio === "NAO_CONCEDIDO") continue;
     await appendRow("pj_benefits", {
       pj_benefit_id: createUuid(),
       pj_id: pjId,
-      beneficio:
-        benefit.nome === "PLANO_SAUDE" && input.status_beneficio === "ATIVO"
-          ? activeBenefitName
-          : benefit.nome,
-      fornecedor: input.fornecedor_beneficio,
-      produto_plano: input.produto_plano,
-      status: input.status_beneficio,
+      beneficio: BENEFIT_FIELD_MAP[benefitKey].label,
+      fornecedor: benefit.fornecedor,
+      produto_plano: benefit.produto_plano,
+      status: benefit.status,
       elegivel: String(benefit.elegivel),
-      concedido: String(input.status_beneficio === "ATIVO"),
-      data_inclusao: input.data_inclusao_beneficio,
-      data_exclusao: input.data_exclusao_beneficio,
-      tipo_custeio: input.tipo_custeio,
-      subsidio_empresa: input.subsidio_empresa,
-      coparticipacao: String(input.coparticipacao_aplicavel),
-      observacoes: input.observacoes_regra,
+      concedido: String(benefit.status === "ATIVO"),
+      data_inclusao: benefit.data_inclusao,
+      data_exclusao: benefit.data_exclusao,
+      tipo_custeio: benefit.tipo_custeio,
+      subsidio_empresa: String(benefit.subsidio_empresa),
+      coparticipacao: String(benefit.coparticipacao_aplicavel),
+      observacoes: benefit.observacoes_regra,
       created_at: getNow(),
       created_by: actor,
     });

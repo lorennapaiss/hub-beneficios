@@ -1,7 +1,9 @@
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { PjForm } from "@/components/pjs/pj-form";
-import { getPjById } from "@/server/pjs";
+import type { PjBenefitConfig, PjBenefits } from "@/lib/schemas/pj";
+import type { PjBenefitHistoryRow, PjListItem } from "@/server/pjs";
+import { getPjDetailById } from "@/server/pjs";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -10,12 +12,102 @@ type RouteParams = {
   params: Promise<{ id: string }>;
 };
 
+const defaultBenefit: PjBenefitConfig = {
+  elegivel: false,
+  status: "NAO_CONCEDIDO",
+  fornecedor: "",
+  produto_plano: "",
+  tipo_custeio: "",
+  data_inclusao: "",
+  data_exclusao: "",
+  subsidio_empresa: 0,
+  custo_mensal: 0,
+  coparticipacao_aplicavel: false,
+  observacoes_regra: "",
+};
+
+const benefitMap = {
+  PLANO_SAUDE: "plano_saude",
+  PLANO_ODONTO: "plano_odontologico",
+  VT: "vt",
+  VR_VA: "vr_va",
+} as const;
+
+const buildInitialBenefits = (
+  benefitHistory: PjBenefitHistoryRow[],
+  pj: PjListItem,
+): PjBenefits => {
+  const latestRows = [...benefitHistory].reverse().reduce<Partial<Record<keyof PjBenefits, PjBenefitHistoryRow>>>(
+    (acc, item) => {
+      const key = benefitMap[item.beneficio as keyof typeof benefitMap];
+      if (key && !acc[key]) {
+        acc[key] = item;
+      }
+      return acc;
+    },
+    {},
+  );
+
+  const fromRow = (key: keyof PjBenefits): PjBenefitConfig => {
+    const row = latestRows[key];
+    if (row) {
+      return {
+        elegivel: row.elegivel === "true",
+        status: row.status as PjBenefitConfig["status"],
+        fornecedor: row.fornecedor,
+        produto_plano: row.produto_plano,
+        tipo_custeio: row.tipo_custeio,
+        data_inclusao: row.data_inclusao,
+        data_exclusao: row.data_exclusao,
+        subsidio_empresa: Number(row.subsidio_empresa) || 0,
+        custo_mensal: 0,
+        coparticipacao_aplicavel: row.coparticipacao === "true",
+        observacoes_regra: row.observacoes,
+      };
+    }
+
+    const isHealth = key === "plano_saude";
+    return {
+      ...defaultBenefit,
+      elegivel:
+        key === "plano_saude"
+          ? pj.elegivel_plano_saude === "true"
+          : key === "plano_odontologico"
+            ? pj.elegivel_plano_odontologico === "true"
+            : key === "vt"
+              ? pj.elegivel_vt === "true"
+              : pj.elegivel_vr_va === "true",
+      status: isHealth
+        ? (pj.status_beneficio as PjBenefitConfig["status"])
+        : "NAO_CONCEDIDO",
+      fornecedor: isHealth ? pj.fornecedor_beneficio : "",
+      produto_plano: isHealth ? pj.produto_plano : "",
+      tipo_custeio: isHealth ? pj.tipo_custeio : "",
+      data_inclusao: isHealth ? pj.data_inclusao_beneficio : "",
+      data_exclusao: isHealth ? pj.data_exclusao_beneficio : "",
+      subsidio_empresa: isHealth ? Number(pj.subsidio_empresa) || 0 : 0,
+      custo_mensal: 0,
+      coparticipacao_aplicavel: isHealth ? pj.coparticipacao_aplicavel === "true" : false,
+      observacoes_regra: isHealth ? pj.observacoes_regra : "",
+    };
+  };
+
+  return {
+    plano_saude: fromRow("plano_saude"),
+    plano_odontologico: fromRow("plano_odontologico"),
+    vt: fromRow("vt"),
+    vr_va: fromRow("vr_va"),
+  };
+};
+
 export default async function EditPjPage({ params }: RouteParams) {
   const { id } = await params;
-  const pj = await getPjById(id);
-  if (!pj) {
+  const detail = await getPjDetailById(id);
+  if (!detail) {
     notFound();
   }
+
+  const { pj, benefitHistory } = detail;
 
   return (
     <div className="space-y-6">
@@ -65,21 +157,7 @@ export default async function EditPjPage({ params }: RouteParams) {
             status_pagamento: pj.status_pagamento,
             ultima_competencia_paga: pj.ultima_competencia_paga,
             observacoes_financeiras: pj.observacoes_financeiras,
-            elegivel_plano_saude: pj.elegivel_plano_saude === "true",
-            elegivel_plano_odontologico: pj.elegivel_plano_odontologico === "true",
-            elegivel_vt: pj.elegivel_vt === "true",
-            elegivel_vr_va: pj.elegivel_vr_va === "true",
-            beneficios_concedidos_resumo: pj.beneficios_concedidos_resumo,
-            fornecedor_beneficio: pj.fornecedor_beneficio,
-            produto_plano: pj.produto_plano,
-            data_inclusao_beneficio: pj.data_inclusao_beneficio,
-            data_exclusao_beneficio: pj.data_exclusao_beneficio,
-            tipo_custeio: pj.tipo_custeio,
-            subsidio_empresa: Number(pj.subsidio_empresa) || 0,
-            coparticipacao_aplicavel: pj.coparticipacao_aplicavel === "true",
-            status_beneficio: pj.status_beneficio as "NAO_CONCEDIDO" | "ATIVO" | "ENCERRADO",
-            observacoes_regra: pj.observacoes_regra,
-            custo_beneficios_mensal: Number(pj.custo_beneficios_mensal) || 0,
+            beneficios: buildInitialBenefits(benefitHistory, pj),
             documentacao_pendente: pj.documentacao_pendente === "true",
           }}
         />

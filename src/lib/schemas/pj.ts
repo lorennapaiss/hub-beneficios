@@ -23,6 +23,27 @@ export const PjRemunerationTypeEnum = z.enum(["FIXO", "VARIAVEL", "MISTO"]);
 
 export const PjBenefitStatusEnum = z.enum(["NAO_CONCEDIDO", "ATIVO", "ENCERRADO"]);
 
+export const PjBenefitConfigSchema = z.object({
+  elegivel: z.boolean().default(false),
+  status: PjBenefitStatusEnum.default("NAO_CONCEDIDO"),
+  fornecedor: z.string().trim().optional(),
+  produto_plano: z.string().trim().optional(),
+  tipo_custeio: z.string().trim().optional(),
+  data_inclusao: z.string().trim().optional(),
+  data_exclusao: z.string().trim().optional(),
+  subsidio_empresa: z.number().min(0).default(0),
+  custo_mensal: z.number().min(0).default(0),
+  coparticipacao_aplicavel: z.boolean().default(false),
+  observacoes_regra: z.string().trim().optional(),
+});
+
+export const PjBenefitsSchema = z.object({
+  plano_saude: PjBenefitConfigSchema,
+  plano_odontologico: PjBenefitConfigSchema,
+  vt: PjBenefitConfigSchema,
+  vr_va: PjBenefitConfigSchema,
+});
+
 export const PjInputSchema = z.object({
   nome_completo: z.string().trim().min(1, "Informe o nome completo."),
   nome_social: z.string().trim().optional(),
@@ -72,23 +93,11 @@ export const PjInputSchema = z.object({
   status_pagamento: z.string().trim().optional(),
   ultima_competencia_paga: z.string().trim().optional(),
   observacoes_financeiras: z.string().trim().optional(),
-  elegivel_plano_saude: z.boolean().default(false),
-  elegivel_plano_odontologico: z.boolean().default(false),
-  elegivel_vt: z.boolean().default(false),
-  elegivel_vr_va: z.boolean().default(false),
-  beneficios_concedidos_resumo: z.string().trim().optional(),
-  fornecedor_beneficio: z.string().trim().optional(),
-  produto_plano: z.string().trim().optional(),
-  data_inclusao_beneficio: z.string().trim().optional(),
-  data_exclusao_beneficio: z.string().trim().optional(),
-  tipo_custeio: z.string().trim().optional(),
-  subsidio_empresa: z.number().min(0).default(0),
-  coparticipacao_aplicavel: z.boolean().default(false),
-  status_beneficio: PjBenefitStatusEnum.default("NAO_CONCEDIDO"),
-  observacoes_regra: z.string().trim().optional(),
-  custo_beneficios_mensal: z.number().min(0).default(0),
+  beneficios: PjBenefitsSchema,
   documentacao_pendente: z.boolean().default(false),
 });
 
+export type PjBenefitConfig = z.infer<typeof PjBenefitConfigSchema>;
+export type PjBenefits = z.infer<typeof PjBenefitsSchema>;
 export type PjInput = z.infer<typeof PjInputSchema>;
 export type PjFormValues = z.infer<typeof PjInputSchema>;
