@@ -158,6 +158,29 @@ export type PjDetail = {
 
 const normalize = (value?: string | null) => value?.trim() ?? "";
 const getNow = () => new Date().toISOString();
+const isMissingSheetError = (error: unknown) => {
+  if (!(error instanceof Error)) return false;
+  const message = error.message.toLowerCase();
+  return (
+    message.includes("unable to parse range") ||
+    message.includes("não foi possível analisar o intervalo") ||
+    message.includes("nao foi possivel analisar o intervalo") ||
+    message.includes("not found") ||
+    message.includes("invalid requests[0].addsheet")
+  );
+};
+
+const safeGetRowsCached = async <T>(sheetName: string) => {
+  try {
+    return (await getRowsCached(sheetName)) as T[];
+  } catch (error) {
+    if (isMissingSheetError(error)) {
+      return [];
+    }
+    throw error;
+  }
+};
+
 const parseNumber = (value?: string | null) => {
   const raw = normalize(value);
   const normalized = raw.includes(",") ? raw.replace(/\./g, "").replace(",", ".") : raw;
@@ -353,7 +376,7 @@ const assertNoDuplicateActiveRegistry = async (
   input: ReturnType<typeof sanitizeInput>,
   pjId?: string,
 ) => {
-  const rows = (await getRowsCached("pjs")) as PjRow[];
+  const rows = await safeGetRowsCached<PjRow>("pjs");
   const duplicate = rows.find(
     (row) =>
       row.pj_id !== pjId &&
@@ -472,7 +495,7 @@ export const listPjs = async ({
   limit = 10,
   offset = 0,
 }: ListPjsParams) => {
-  const rows = (await getRowsCached("pjs")) as PjRow[];
+  const rows = await safeGetRowsCached<PjRow>("pjs");
   let result = rows.map(hydratePj);
 
   if (search) {
@@ -503,8 +526,15 @@ export const listPjs = async ({
 };
 
 export const getPjById = async (pjId: string) => {
-  const row = (await findById("pjs", "pj_id", pjId)) as PjRow | null;
-  return row ? hydratePj(row) : null;
+  try {
+    const row = (await findById("pjs", "pj_id", pjId)) as PjRow | null;
+    return row ? hydratePj(row) : null;
+  } catch (error) {
+    if (isMissingSheetError(error)) {
+      return null;
+    }
+    throw error;
+  }
 };
 
 export const getPjDetailById = async (pjId: string): Promise<PjDetail | null> => {
@@ -512,20 +542,16 @@ export const getPjDetailById = async (pjId: string): Promise<PjDetail | null> =>
   if (!pj) return null;
 
   const [financialHistory, benefitHistory, allocationHistory] = await Promise.all([
-    getRowsCached("pj_financial_history"),
-    getRowsCached("pj_benefits"),
-    getRowsCached("pj_allocations"),
+    safeGetRowsCached<PjFinancialHistoryRow>("pj_financial_history"),
+    safeGetRowsCached<PjBenefitHistoryRow>("pj_benefits"),
+    safeGetRowsCached<PjAllocationHistoryRow>("pj_allocations"),
   ]);
 
   return {
     pj,
-    financialHistory: (financialHistory as PjFinancialHistoryRow[]).filter(
-      (row) => row.pj_id === pjId,
-    ),
-    benefitHistory: (benefitHistory as PjBenefitHistoryRow[]).filter((row) => row.pj_id === pjId),
-    allocationHistory: (allocationHistory as PjAllocationHistoryRow[]).filter(
-      (row) => row.pj_id === pjId,
-    ),
+    financialHistory: financialHistory.filter((row) => row.pj_id === pjId),
+    benefitHistory: benefitHistory.filter((row) => row.pj_id === pjId),
+    allocationHistory: allocationHistory.filter((row) => row.pj_id === pjId),
   };
 };
 
