@@ -101,6 +101,13 @@ Variaveis na Vercel (Production):
 - Geracao individual: `GET/POST /api/pjs/[id]/descritivo?competencia=AAAA-MM`.
 - Geracao em lote: `POST /api/pjs/descritivos/lote` com `{ "competencia": "AAAA-MM" }`.
 
+## Importacao CSV de PJs
+- A tela `/pjs` possui importacao via CSV com template baixavel.
+- Endpoint de importacao: `POST /api/pjs/import` com `multipart/form-data` e campo `file`.
+- Template: `GET /api/pjs/import/template`.
+- Para dependentes do plano de saude, use a coluna `beneficios.plano_saude.dependentes_json` com um JSON array.
+- Exemplo de dependentes: `[{ "nome": "Maria", "parentesco": "Filha", "custo_mensal": 350, "subsidio_empresa": 100, "coparticipacao_aplicavel": true }]`
+
 ## Build
 ```bash
 npm run build

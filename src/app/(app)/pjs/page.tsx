@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
+import { PjImportDialog } from "@/components/pjs/pj-import-dialog";
 import { PjSummaryCards } from "@/components/pjs/pj-summary-cards";
 import { listPjs } from "@/server/pjs";
 
@@ -77,6 +78,7 @@ export default async function PjsPage({
         description="Base mestre, pendencias operacionais e custo consolidado de profissionais PJ."
         actions={
           <div className="flex gap-2">
+            <PjImportDialog />
             <Button asChild variant="outline">
               <Link href={`/api/pjs/export?${buildQuery({ offset: "0" })}`}>Exportar CSV</Link>
             </Button>
