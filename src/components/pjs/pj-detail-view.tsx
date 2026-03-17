@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PjHealthDescriptivePanel } from "@/components/pjs/pj-health-descriptive-panel";
 import type { PjDetail } from "@/server/pjs";
 
 const formatCurrency = (value: string | number) =>
@@ -35,7 +36,7 @@ const DetailGrid = ({ items }: { items: Array<{ label: string; value: string }> 
 );
 
 export function PjDetailView({ detail }: { detail: PjDetail }) {
-  const { pj, financialHistory, benefitHistory, allocationHistory } = detail;
+  const { pj, financialHistory, benefitHistory, allocationHistory, descriptiveHistory } = detail;
 
   return (
     <div className="space-y-6">
@@ -162,6 +163,8 @@ export function PjDetailView({ detail }: { detail: PjDetail }) {
           </table>
         </div>
       </Section>
+
+      <PjHealthDescriptivePanel pjId={pj.pj_id} history={descriptiveHistory} />
 
       <Section title="Alocacoes">
         <div className="overflow-hidden rounded-lg border border-border">

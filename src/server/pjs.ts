@@ -2,6 +2,10 @@ import "server-only";
 
 import { createUuid } from "@/lib/uuid";
 import type { PjInput } from "@/lib/schemas/pj";
+import {
+  listPjHealthDescriptiveHistory,
+  type PjHealthDescriptiveHistoryRow,
+} from "@/server/pj-health-descriptive-store";
 import { appendRow, findById, getRowsCached, updateRowById } from "@/server/sheets";
 
 export type PjRow = {
@@ -154,6 +158,7 @@ export type PjDetail = {
   financialHistory: PjFinancialHistoryRow[];
   benefitHistory: PjBenefitHistoryRow[];
   allocationHistory: PjAllocationHistoryRow[];
+  descriptiveHistory: PjHealthDescriptiveHistoryRow[];
 };
 
 const normalize = (value?: string | null) => value?.trim() ?? "";
@@ -541,10 +546,11 @@ export const getPjDetailById = async (pjId: string): Promise<PjDetail | null> =>
   const pj = await getPjById(pjId);
   if (!pj) return null;
 
-  const [financialHistory, benefitHistory, allocationHistory] = await Promise.all([
+  const [financialHistory, benefitHistory, allocationHistory, descriptiveHistory] = await Promise.all([
     safeGetRowsCached<PjFinancialHistoryRow>("pj_financial_history"),
     safeGetRowsCached<PjBenefitHistoryRow>("pj_benefits"),
     safeGetRowsCached<PjAllocationHistoryRow>("pj_allocations"),
+    listPjHealthDescriptiveHistory(pjId),
   ]);
 
   return {
@@ -552,6 +558,7 @@ export const getPjDetailById = async (pjId: string): Promise<PjDetail | null> =>
     financialHistory: financialHistory.filter((row) => row.pj_id === pjId),
     benefitHistory: benefitHistory.filter((row) => row.pj_id === pjId),
     allocationHistory: allocationHistory.filter((row) => row.pj_id === pjId),
+    descriptiveHistory,
   };
 };
 

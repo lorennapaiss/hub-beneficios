@@ -94,6 +94,13 @@ Variaveis na Vercel (Production):
 - `src/server`: integracoes (Sheets/Drive) e regras server-side
 - `docs`: documentacao de schema do Sheets
 
+## Descritivo de Desconto PJ
+- A ficha do PJ agora possui a rotina de geracao do descritivo mensal de desconto do plano de saude.
+- Execute `POST /api/admin/seed` com `ENABLE_SEED=true` para criar as abas `pj_descritivo_config`, `pj_descritivo_itens` e `pj_descritivo_geracoes`.
+- Preencha `pj_descritivo_itens` com um beneficiario por linha e use a aba `pj_descritivo_config` para parametrizar cabeçalho, textos e nome de arquivo.
+- Geracao individual: `GET/POST /api/pjs/[id]/descritivo?competencia=AAAA-MM`.
+- Geracao em lote: `POST /api/pjs/descritivos/lote` com `{ "competencia": "AAAA-MM" }`.
+
 ## Build
 ```bash
 npm run build
