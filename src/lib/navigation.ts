@@ -5,6 +5,7 @@ import {
   FileText,
   LayoutDashboard,
   LineChart,
+  Network,
   Receipt,
   Settings,
   Users,
@@ -53,6 +54,11 @@ export const navItems: NavItem[] = [
     title: "Pagamentos",
     href: "/beneficios/pagamentos",
     icon: Wallet,
+  },
+  {
+    title: "Controle de PJs",
+    href: "/pjs",
+    icon: Network,
   },
   {
     title: "Indicadores",
