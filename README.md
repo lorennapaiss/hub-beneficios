@@ -103,10 +103,12 @@ Variaveis na Vercel (Production):
 
 ## Importacao CSV de PJs
 - A tela `/pjs` possui importacao via CSV com template baixavel.
+- O manual operacional tambem esta disponivel na aplicacao em `/pjs/manual`.
 - Endpoint de importacao: `POST /api/pjs/import` com `multipart/form-data` e campo `file`.
 - Template: `GET /api/pjs/import/template`.
 - Para dependentes do plano de saude, use a coluna `beneficios.plano_saude.dependentes_json` com um JSON array.
 - Exemplo de dependentes: `[{ "nome": "Maria", "parentesco": "Filha", "custo_mensal": 350, "subsidio_empresa": 100, "coparticipacao_aplicavel": true }]`
+- Manual operacional: `docs/manual-preenchimento-pjs.md`
 
 ## Build
 ```bash

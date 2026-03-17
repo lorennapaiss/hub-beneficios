@@ -78,6 +78,9 @@ export default async function PjsPage({
         description="Base mestre, pendencias operacionais e custo consolidado de profissionais PJ."
         actions={
           <div className="flex gap-2">
+            <Button asChild variant="outline">
+              <Link href="/pjs/manual">Manual</Link>
+            </Button>
             <PjImportDialog />
             <Button asChild variant="outline">
               <Link href={`/api/pjs/export?${buildQuery({ offset: "0" })}`}>Exportar CSV</Link>
