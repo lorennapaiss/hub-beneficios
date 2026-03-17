@@ -23,6 +23,17 @@ export const PjRemunerationTypeEnum = z.enum(["FIXO", "VARIAVEL", "MISTO"]);
 
 export const PjBenefitStatusEnum = z.enum(["NAO_CONCEDIDO", "ATIVO", "ENCERRADO"]);
 
+export const PjHealthDependentSchema = z.object({
+  nome: z.string().trim().optional(),
+  parentesco: z.string().trim().optional(),
+  data_inclusao: z.string().trim().optional(),
+  data_exclusao: z.string().trim().optional(),
+  subsidio_empresa: z.number().min(0).default(0),
+  custo_mensal: z.number().min(0).default(0),
+  coparticipacao_aplicavel: z.boolean().default(false),
+  observacoes: z.string().trim().optional(),
+});
+
 export const PjBenefitConfigSchema = z.object({
   elegivel: z.boolean().default(false),
   status: PjBenefitStatusEnum.default("NAO_CONCEDIDO"),
@@ -37,8 +48,12 @@ export const PjBenefitConfigSchema = z.object({
   observacoes_regra: z.string().trim().optional(),
 });
 
+export const PjHealthBenefitConfigSchema = PjBenefitConfigSchema.extend({
+  dependentes: z.array(PjHealthDependentSchema).default([]),
+});
+
 export const PjBenefitsSchema = z.object({
-  plano_saude: PjBenefitConfigSchema,
+  plano_saude: PjHealthBenefitConfigSchema,
   plano_odontologico: PjBenefitConfigSchema,
   vt: PjBenefitConfigSchema,
   vr_va: PjBenefitConfigSchema,
@@ -97,7 +112,9 @@ export const PjInputSchema = z.object({
   documentacao_pendente: z.boolean().default(false),
 });
 
+export type PjHealthDependent = z.infer<typeof PjHealthDependentSchema>;
 export type PjBenefitConfig = z.infer<typeof PjBenefitConfigSchema>;
+export type PjHealthBenefitConfig = z.infer<typeof PjHealthBenefitConfigSchema>;
 export type PjBenefits = z.infer<typeof PjBenefitsSchema>;
 export type PjInput = z.infer<typeof PjInputSchema>;
 export type PjFormValues = z.infer<typeof PjInputSchema>;

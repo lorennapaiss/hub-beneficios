@@ -150,14 +150,16 @@ export function PjDetailView({ detail }: { detail: PjDetail }) {
                   </td>
                 </tr>
               ) : (
-                benefitHistory.map((item) => (
+                benefitHistory
+                  .filter((item) => item.beneficio !== "PLANO_SAUDE_DEPENDENTE")
+                  .map((item) => (
                   <tr key={item.pj_benefit_id} className="border-b border-border">
                     <td className="px-4 py-3">{item.beneficio}</td>
                     <td className="px-4 py-3">{item.status}</td>
                     <td className="px-4 py-3">{item.fornecedor || "-"}</td>
                     <td className="px-4 py-3">{item.data_inclusao || "-"}</td>
                   </tr>
-                ))
+                  ))
               )}
             </tbody>
           </table>

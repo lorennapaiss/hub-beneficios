@@ -1,7 +1,13 @@
 import "server-only";
 
 import { createUuid } from "@/lib/uuid";
-import type { PjBenefitConfig, PjBenefits, PjInput } from "@/lib/schemas/pj";
+import type {
+  PjBenefitConfig,
+  PjBenefits,
+  PjHealthBenefitConfig,
+  PjHealthDependent,
+  PjInput,
+} from "@/lib/schemas/pj";
 import {
   listPjHealthDescriptiveHistory,
   type PjHealthDescriptiveHistoryRow,
@@ -227,6 +233,20 @@ const sanitizeBenefit = (benefit: PjBenefitConfig): PjBenefitConfig => ({
   observacoes_regra: normalize(benefit.observacoes_regra),
 });
 
+const sanitizeDependent = (dependent: PjHealthDependent): PjHealthDependent => ({
+  ...dependent,
+  nome: normalize(dependent.nome),
+  parentesco: normalize(dependent.parentesco),
+  data_inclusao: normalize(dependent.data_inclusao),
+  data_exclusao: normalize(dependent.data_exclusao),
+  observacoes: normalize(dependent.observacoes),
+});
+
+const sanitizeHealthBenefit = (benefit: PjHealthBenefitConfig): PjHealthBenefitConfig => ({
+  ...sanitizeBenefit(benefit),
+  dependentes: benefit.dependentes.map(sanitizeDependent),
+});
+
 const getBenefitEntries = (beneficios: PjBenefits) =>
   (Object.entries(beneficios) as Array<[keyof PjBenefits, PjBenefitConfig]>).map(
     ([key, value]) => [key, value] as const,
@@ -247,6 +267,18 @@ const hasConfiguredBenefitData = (benefit: PjBenefitConfig) =>
   benefit.custo_mensal > 0 ||
   benefit.coparticipacao_aplicavel;
 
+const hasConfiguredDependentData = (dependent: PjHealthDependent) =>
+  Boolean(
+    normalize(dependent.nome) ||
+      normalize(dependent.parentesco) ||
+      normalize(dependent.data_inclusao) ||
+      normalize(dependent.data_exclusao) ||
+      normalize(dependent.observacoes),
+  ) ||
+  dependent.subsidio_empresa > 0 ||
+  dependent.custo_mensal > 0 ||
+  dependent.coparticipacao_aplicavel;
+
 const getPrimaryBenefit = (beneficios: PjBenefits) =>
   beneficios.plano_saude.elegivel || hasConfiguredBenefitData(beneficios.plano_saude)
     ? beneficios.plano_saude
@@ -258,6 +290,10 @@ const getBenefitSummary = (beneficios: PjBenefits) => {
   const active = configured.filter(([, benefit]) => benefit.status === "ATIVO");
   const primary = getPrimaryBenefit(beneficios);
   const benefitNames = active.length > 0 ? active : configured;
+  const dependenteCost = beneficios.plano_saude.dependentes.reduce(
+    (total, dependent) => total + dependent.custo_mensal,
+    0,
+  );
 
   return {
     beneficios_concedidos_resumo: benefitNames
@@ -273,9 +309,24 @@ const getBenefitSummary = (beneficios: PjBenefits) => {
     status_beneficio: primary.status,
     observacoes_regra: normalize(primary.observacoes_regra),
     custo_beneficios_mensal: String(
-      getBenefitEntries(beneficios).reduce((total, [, benefit]) => total + benefit.custo_mensal, 0),
+      getBenefitEntries(beneficios).reduce((total, [, benefit]) => total + benefit.custo_mensal, 0) +
+        dependenteCost,
     ),
   };
+};
+
+const serializeHealthDependent = (dependent: PjHealthDependent) =>
+  `DEPENDENTE::${JSON.stringify(dependent)}`;
+
+export const parseHealthDependentObservation = (value?: string) => {
+  const normalized = normalize(value);
+  if (!normalized.startsWith("DEPENDENTE::")) return null;
+
+  try {
+    return JSON.parse(normalized.slice("DEPENDENTE::".length)) as PjHealthDependent;
+  } catch {
+    return null;
+  }
 };
 
 const appendAudit = async (
@@ -335,7 +386,7 @@ const sanitizeInput = (data: PjInput) => ({
   ultima_competencia_paga: normalize(data.ultima_competencia_paga),
   observacoes_financeiras: normalize(data.observacoes_financeiras),
   beneficios: {
-    plano_saude: sanitizeBenefit(data.beneficios.plano_saude),
+    plano_saude: sanitizeHealthBenefit(data.beneficios.plano_saude),
     plano_odontologico: sanitizeBenefit(data.beneficios.plano_odontologico),
     vt: sanitizeBenefit(data.beneficios.vt),
     vr_va: sanitizeBenefit(data.beneficios.vr_va),
@@ -508,6 +559,30 @@ const appendBenefitHistory = async (
       subsidio_empresa: String(benefit.subsidio_empresa),
       coparticipacao: String(benefit.coparticipacao_aplicavel),
       observacoes: benefit.observacoes_regra,
+      created_at: getNow(),
+      created_by: actor,
+    });
+
+  }
+
+  for (const dependent of input.beneficios.plano_saude.dependentes) {
+    if (!hasConfiguredDependentData(dependent)) continue;
+
+    await appendRow("pj_benefits", {
+      pj_benefit_id: createUuid(),
+      pj_id: pjId,
+      beneficio: "PLANO_SAUDE_DEPENDENTE",
+      fornecedor: input.beneficios.plano_saude.fornecedor,
+      produto_plano: dependent.nome,
+      status: input.beneficios.plano_saude.status,
+      elegivel: "true",
+      concedido: String(input.beneficios.plano_saude.status === "ATIVO"),
+      data_inclusao: dependent.data_inclusao,
+      data_exclusao: dependent.data_exclusao,
+      tipo_custeio: dependent.parentesco,
+      subsidio_empresa: String(dependent.subsidio_empresa),
+      coparticipacao: String(dependent.coparticipacao_aplicavel),
+      observacoes: serializeHealthDependent(dependent),
       created_at: getNow(),
       created_by: actor,
     });

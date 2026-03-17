@@ -3,7 +3,13 @@
 import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, type FieldErrors, type Resolver } from "react-hook-form";
+import {
+  useFieldArray,
+  useForm,
+  type Control,
+  type FieldErrors,
+  type Resolver,
+} from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -16,6 +22,7 @@ import {
   type PjBenefitConfig,
   type PjBenefits,
   type PjFormValues,
+  type PjHealthBenefitConfig,
 } from "@/lib/schemas/pj";
 
 type PjFormProps = {
@@ -38,6 +45,11 @@ const defaultBenefit: PjBenefitConfig = {
   custo_mensal: 0,
   coparticipacao_aplicavel: false,
   observacoes_regra: "",
+};
+
+const defaultHealthBenefit: PjHealthBenefitConfig = {
+  ...defaultBenefit,
+  dependentes: [],
 };
 
 const defaultValues: PjFormValues = {
@@ -82,7 +94,7 @@ const defaultValues: PjFormValues = {
   ultima_competencia_paga: "",
   observacoes_financeiras: "",
   beneficios: {
-    plano_saude: { ...defaultBenefit },
+    plano_saude: { ...defaultHealthBenefit },
     plano_odontologico: { ...defaultBenefit },
     vt: { ...defaultBenefit },
     vr_va: { ...defaultBenefit },
@@ -131,13 +143,244 @@ function Field({
   );
 }
 
+function BaseBenefitFields({
+  prefix,
+  register,
+  errors,
+}: {
+  prefix: `beneficios.${BenefitKey}`;
+  register: ReturnType<typeof useForm<PjFormValues>>["register"];
+  errors?: FieldErrors<PjBenefitConfig>;
+}) {
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      <Field label="Status do beneficio" error={errors?.status?.message}>
+        <select className={inputClassName} {...register(`${prefix}.status`)}>
+          {PjBenefitStatusEnum.options.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field label="Fornecedor" error={errors?.fornecedor?.message}>
+        <input className={inputClassName} {...register(`${prefix}.fornecedor`)} />
+      </Field>
+      <Field label="Produto / plano" error={errors?.produto_plano?.message}>
+        <input className={inputClassName} {...register(`${prefix}.produto_plano`)} />
+      </Field>
+      <Field label="Tipo de custeio" error={errors?.tipo_custeio?.message}>
+        <input className={inputClassName} {...register(`${prefix}.tipo_custeio`)} />
+      </Field>
+      <Field label="Data de inclusao" error={errors?.data_inclusao?.message}>
+        <input className={inputClassName} type="date" {...register(`${prefix}.data_inclusao`)} />
+      </Field>
+      <Field label="Data de exclusao" error={errors?.data_exclusao?.message}>
+        <input className={inputClassName} type="date" {...register(`${prefix}.data_exclusao`)} />
+      </Field>
+      <Field label="Subsidio empresa" error={errors?.subsidio_empresa?.message}>
+        <input
+          className={inputClassName}
+          type="number"
+          step="0.01"
+          {...register(`${prefix}.subsidio_empresa`, { valueAsNumber: true })}
+        />
+      </Field>
+      <Field label="Custo mensal" error={errors?.custo_mensal?.message}>
+        <input
+          className={inputClassName}
+          type="number"
+          step="0.01"
+          {...register(`${prefix}.custo_mensal`, { valueAsNumber: true })}
+        />
+      </Field>
+      <label className="flex items-center gap-2 text-sm font-medium text-foreground md:col-span-2">
+        <input type="checkbox" {...register(`${prefix}.coparticipacao_aplicavel`)} />
+        Coparticipacao aplicavel
+      </label>
+      <Field
+        label="Observacoes de regra"
+        error={errors?.observacoes_regra?.message}
+        className="space-y-2 text-sm font-medium text-foreground md:col-span-2"
+      >
+        <textarea className={inputClassName} rows={3} {...register(`${prefix}.observacoes_regra`)} />
+      </Field>
+    </div>
+  );
+}
+
+function HealthBenefitCard({
+  register,
+  errors,
+  control,
+}: {
+  register: ReturnType<typeof useForm<PjFormValues>>["register"];
+  errors?: FieldErrors<PjHealthBenefitConfig>;
+  control: Control<PjFormValues>;
+}) {
+  const prefix = "beneficios.plano_saude" as const;
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "beneficios.plano_saude.dependentes",
+  });
+
+  return (
+    <div className="space-y-4 rounded-xl border border-border/70 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="text-sm font-semibold text-foreground">Plano de saude</div>
+          <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+            Configuracao individual do beneficio
+          </div>
+        </div>
+        <label className="flex items-center gap-2 text-sm font-medium text-foreground">
+          <input type="checkbox" {...register(`${prefix}.elegivel`)} />
+          Elegivel
+        </label>
+      </div>
+
+      <BaseBenefitFields prefix={prefix} register={register} errors={errors} />
+
+      <div className="space-y-3 rounded-lg border border-border/70 p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <div className="text-sm font-semibold text-foreground">Dependentes</div>
+            <div className="text-xs text-muted-foreground">
+              Dependentes vinculados ao plano de saude do PJ.
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() =>
+              append({
+                nome: "",
+                parentesco: "",
+                data_inclusao: "",
+                data_exclusao: "",
+                subsidio_empresa: 0,
+                custo_mensal: 0,
+                coparticipacao_aplicavel: false,
+                observacoes: "",
+              })
+            }
+          >
+            Adicionar dependente
+          </Button>
+        </div>
+
+        {fields.length === 0 ? (
+          <div className="text-sm text-muted-foreground">Nenhum dependente cadastrado.</div>
+        ) : (
+          fields.map((field, index) => (
+            <div key={field.id} className="space-y-4 rounded-lg border border-border/70 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-sm font-medium text-foreground">Dependente {index + 1}</div>
+                <Button type="button" variant="outline" onClick={() => remove(index)}>
+                  Remover
+                </Button>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <Field
+                  label="Nome"
+                  error={errors?.dependentes?.[index]?.nome?.message}
+                >
+                  <input
+                    className={inputClassName}
+                    {...register(`beneficios.plano_saude.dependentes.${index}.nome`)}
+                  />
+                </Field>
+                <Field
+                  label="Parentesco"
+                  error={errors?.dependentes?.[index]?.parentesco?.message}
+                >
+                  <input
+                    className={inputClassName}
+                    {...register(`beneficios.plano_saude.dependentes.${index}.parentesco`)}
+                  />
+                </Field>
+                <Field
+                  label="Data de inclusao"
+                  error={errors?.dependentes?.[index]?.data_inclusao?.message}
+                >
+                  <input
+                    className={inputClassName}
+                    type="date"
+                    {...register(`beneficios.plano_saude.dependentes.${index}.data_inclusao`)}
+                  />
+                </Field>
+                <Field
+                  label="Data de exclusao"
+                  error={errors?.dependentes?.[index]?.data_exclusao?.message}
+                >
+                  <input
+                    className={inputClassName}
+                    type="date"
+                    {...register(`beneficios.plano_saude.dependentes.${index}.data_exclusao`)}
+                  />
+                </Field>
+                <Field
+                  label="Subsidio empresa"
+                  error={errors?.dependentes?.[index]?.subsidio_empresa?.message}
+                >
+                  <input
+                    className={inputClassName}
+                    type="number"
+                    step="0.01"
+                    {...register(`beneficios.plano_saude.dependentes.${index}.subsidio_empresa`, {
+                      valueAsNumber: true,
+                    })}
+                  />
+                </Field>
+                <Field
+                  label="Custo mensal"
+                  error={errors?.dependentes?.[index]?.custo_mensal?.message}
+                >
+                  <input
+                    className={inputClassName}
+                    type="number"
+                    step="0.01"
+                    {...register(`beneficios.plano_saude.dependentes.${index}.custo_mensal`, {
+                      valueAsNumber: true,
+                    })}
+                  />
+                </Field>
+                <label className="flex items-center gap-2 text-sm font-medium text-foreground md:col-span-2">
+                  <input
+                    type="checkbox"
+                    {...register(
+                      `beneficios.plano_saude.dependentes.${index}.coparticipacao_aplicavel`,
+                    )}
+                  />
+                  Coparticipacao aplicavel
+                </label>
+                <Field
+                  label="Observacoes"
+                  error={errors?.dependentes?.[index]?.observacoes?.message}
+                  className="space-y-2 text-sm font-medium text-foreground md:col-span-2"
+                >
+                  <textarea
+                    className={inputClassName}
+                    rows={3}
+                    {...register(`beneficios.plano_saude.dependentes.${index}.observacoes`)}
+                  />
+                </Field>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
 function BenefitCard({
   benefitKey,
   label,
   register,
   errors,
 }: {
-  benefitKey: BenefitKey;
+  benefitKey: Exclude<BenefitKey, "plano_saude">;
   label: string;
   register: ReturnType<typeof useForm<PjFormValues>>["register"];
   errors?: FieldErrors<PjBenefitConfig>;
@@ -159,59 +402,7 @@ function BenefitCard({
         </label>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <Field label="Status do beneficio" error={errors?.status?.message}>
-          <select className={inputClassName} {...register(`${prefix}.status`)}>
-            {PjBenefitStatusEnum.options.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Fornecedor" error={errors?.fornecedor?.message}>
-          <input className={inputClassName} {...register(`${prefix}.fornecedor`)} />
-        </Field>
-        <Field label="Produto / plano" error={errors?.produto_plano?.message}>
-          <input className={inputClassName} {...register(`${prefix}.produto_plano`)} />
-        </Field>
-        <Field label="Tipo de custeio" error={errors?.tipo_custeio?.message}>
-          <input className={inputClassName} {...register(`${prefix}.tipo_custeio`)} />
-        </Field>
-        <Field label="Data de inclusao" error={errors?.data_inclusao?.message}>
-          <input className={inputClassName} type="date" {...register(`${prefix}.data_inclusao`)} />
-        </Field>
-        <Field label="Data de exclusao" error={errors?.data_exclusao?.message}>
-          <input className={inputClassName} type="date" {...register(`${prefix}.data_exclusao`)} />
-        </Field>
-        <Field label="Subsidio empresa" error={errors?.subsidio_empresa?.message}>
-          <input
-            className={inputClassName}
-            type="number"
-            step="0.01"
-            {...register(`${prefix}.subsidio_empresa`, { valueAsNumber: true })}
-          />
-        </Field>
-        <Field label="Custo mensal" error={errors?.custo_mensal?.message}>
-          <input
-            className={inputClassName}
-            type="number"
-            step="0.01"
-            {...register(`${prefix}.custo_mensal`, { valueAsNumber: true })}
-          />
-        </Field>
-        <label className="flex items-center gap-2 text-sm font-medium text-foreground md:col-span-2">
-          <input type="checkbox" {...register(`${prefix}.coparticipacao_aplicavel`)} />
-          Coparticipacao aplicavel
-        </label>
-        <Field
-          label="Observacoes de regra"
-          error={errors?.observacoes_regra?.message}
-          className="space-y-2 text-sm font-medium text-foreground md:col-span-2"
-        >
-          <textarea className={inputClassName} rows={3} {...register(`${prefix}.observacoes_regra`)} />
-        </Field>
-      </div>
+      <BaseBenefitFields prefix={prefix} register={register} errors={errors} />
     </div>
   );
 }
@@ -221,6 +412,7 @@ export function PjForm({ mode, pjId, initialValues }: PjFormProps) {
   const [serverError, setServerError] = useState<string | null>(null);
   const {
     register,
+    control,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<PjFormValues>({
@@ -231,6 +423,13 @@ export function PjForm({ mode, pjId, initialValues }: PjFormProps) {
       beneficios: {
         ...defaultValues.beneficios,
         ...initialValues?.beneficios,
+        plano_saude: {
+          ...defaultValues.beneficios.plano_saude,
+          ...initialValues?.beneficios?.plano_saude,
+          dependentes:
+            initialValues?.beneficios?.plano_saude?.dependentes ??
+            defaultValues.beneficios.plano_saude.dependentes,
+        },
       },
     },
   });
@@ -480,18 +679,25 @@ export function PjForm({ mode, pjId, initialValues }: PjFormProps) {
         <TabsContent value="beneficios" className="space-y-5">
           <SectionTitle
             title="Beneficios e elegibilidade"
-            description="Agora cada beneficio tem sua propria configuracao, sem agregacao."
+            description="Plano de saude agora permite dependentes vinculados."
           />
           <div className="space-y-4">
-            {(Object.entries(benefitLabels) as Array<[BenefitKey, string]>).map(([benefitKey, label]) => (
-              <BenefitCard
-                key={benefitKey}
-                benefitKey={benefitKey}
-                label={label}
-                register={register}
-                errors={errors.beneficios?.[benefitKey]}
-              />
-            ))}
+            <HealthBenefitCard
+              register={register}
+              control={control}
+              errors={errors.beneficios?.plano_saude}
+            />
+            {(Object.entries(benefitLabels) as Array<[BenefitKey, string]>)
+              .filter(([benefitKey]) => benefitKey !== "plano_saude")
+              .map(([benefitKey, label]) => (
+                <BenefitCard
+                  key={benefitKey}
+                  benefitKey={benefitKey as Exclude<BenefitKey, "plano_saude">}
+                  label={label}
+                  register={register}
+                  errors={errors.beneficios?.[benefitKey] as FieldErrors<PjBenefitConfig> | undefined}
+                />
+              ))}
           </div>
         </TabsContent>
       </Tabs>

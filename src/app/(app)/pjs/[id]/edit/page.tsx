@@ -1,8 +1,14 @@
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { PjForm } from "@/components/pjs/pj-form";
-import type { PjBenefitConfig, PjBenefits } from "@/lib/schemas/pj";
+import type {
+  PjBenefitConfig,
+  PjBenefits,
+  PjHealthBenefitConfig,
+  PjHealthDependent,
+} from "@/lib/schemas/pj";
 import type { PjBenefitHistoryRow, PjListItem } from "@/server/pjs";
+import { parseHealthDependentObservation } from "@/server/pjs";
 import { getPjDetailById } from "@/server/pjs";
 
 export const dynamic = "force-dynamic";
@@ -33,10 +39,12 @@ const benefitMap = {
   VR_VA: "vr_va",
 } as const;
 
-const buildInitialBenefits = (
-  benefitHistory: PjBenefitHistoryRow[],
-  pj: PjListItem,
-): PjBenefits => {
+const buildInitialBenefits = (benefitHistory: PjBenefitHistoryRow[], pj: PjListItem): PjBenefits => {
+  const dependentes = benefitHistory
+    .filter((item) => item.beneficio === "PLANO_SAUDE_DEPENDENTE")
+    .map((item) => parseHealthDependentObservation(item.observacoes))
+    .filter((item): item is PjHealthDependent => item !== null);
+
   const latestRows = [...benefitHistory].reverse().reduce<Partial<Record<keyof PjBenefits, PjBenefitHistoryRow>>>(
     (acc, item) => {
       const key = benefitMap[item.beneficio as keyof typeof benefitMap];
@@ -48,7 +56,7 @@ const buildInitialBenefits = (
     {},
   );
 
-  const fromRow = (key: keyof PjBenefits): PjBenefitConfig => {
+  const fromRow = (key: Exclude<keyof PjBenefits, "plano_saude">): PjBenefitConfig => {
     const row = latestRows[key];
     if (row) {
       return {
@@ -66,34 +74,61 @@ const buildInitialBenefits = (
       };
     }
 
-    const isHealth = key === "plano_saude";
     return {
       ...defaultBenefit,
       elegivel:
-        key === "plano_saude"
-          ? pj.elegivel_plano_saude === "true"
-          : key === "plano_odontologico"
-            ? pj.elegivel_plano_odontologico === "true"
-            : key === "vt"
-              ? pj.elegivel_vt === "true"
-              : pj.elegivel_vr_va === "true",
-      status: isHealth
-        ? (pj.status_beneficio as PjBenefitConfig["status"])
-        : "NAO_CONCEDIDO",
-      fornecedor: isHealth ? pj.fornecedor_beneficio : "",
-      produto_plano: isHealth ? pj.produto_plano : "",
-      tipo_custeio: isHealth ? pj.tipo_custeio : "",
-      data_inclusao: isHealth ? pj.data_inclusao_beneficio : "",
-      data_exclusao: isHealth ? pj.data_exclusao_beneficio : "",
-      subsidio_empresa: isHealth ? Number(pj.subsidio_empresa) || 0 : 0,
+        key === "plano_odontologico"
+          ? pj.elegivel_plano_odontologico === "true"
+          : key === "vt"
+            ? pj.elegivel_vt === "true"
+            : pj.elegivel_vr_va === "true",
+      status: "NAO_CONCEDIDO",
+      fornecedor: "",
+      produto_plano: "",
+      tipo_custeio: "",
+      data_inclusao: "",
+      data_exclusao: "",
+      subsidio_empresa: 0,
       custo_mensal: 0,
-      coparticipacao_aplicavel: isHealth ? pj.coparticipacao_aplicavel === "true" : false,
-      observacoes_regra: isHealth ? pj.observacoes_regra : "",
+      coparticipacao_aplicavel: false,
+      observacoes_regra: "",
     };
   };
 
+  const healthRow = latestRows.plano_saude;
+  const planoSaude: PjHealthBenefitConfig = healthRow
+    ? {
+        elegivel: healthRow.elegivel === "true",
+        status: healthRow.status as PjHealthBenefitConfig["status"],
+        fornecedor: healthRow.fornecedor,
+        produto_plano: healthRow.produto_plano,
+        tipo_custeio: healthRow.tipo_custeio,
+        data_inclusao: healthRow.data_inclusao,
+        data_exclusao: healthRow.data_exclusao,
+        subsidio_empresa: Number(healthRow.subsidio_empresa) || 0,
+        custo_mensal: 0,
+        coparticipacao_aplicavel: healthRow.coparticipacao === "true",
+        observacoes_regra: healthRow.observacoes,
+        dependentes,
+      }
+    : {
+        ...defaultBenefit,
+        elegivel: pj.elegivel_plano_saude === "true",
+        status: pj.status_beneficio as PjHealthBenefitConfig["status"],
+        fornecedor: pj.fornecedor_beneficio,
+        produto_plano: pj.produto_plano,
+        tipo_custeio: pj.tipo_custeio,
+        data_inclusao: pj.data_inclusao_beneficio,
+        data_exclusao: pj.data_exclusao_beneficio,
+        subsidio_empresa: Number(pj.subsidio_empresa) || 0,
+        custo_mensal: 0,
+        coparticipacao_aplicavel: pj.coparticipacao_aplicavel === "true",
+        observacoes_regra: pj.observacoes_regra,
+        dependentes,
+      };
+
   return {
-    plano_saude: fromRow("plano_saude"),
+    plano_saude: planoSaude,
     plano_odontologico: fromRow("plano_odontologico"),
     vt: fromRow("vt"),
     vr_va: fromRow("vr_va"),
