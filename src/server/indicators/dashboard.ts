@@ -559,97 +559,62 @@ const readHealthDetailed = async (
     throw new Error("spreadsheet nao configurada para Plano de Saúde");
   }
 
-  const parseHealthMainSheet = (
-    values: string[][],
-    sheetName: string,
-  ): HealthRecord[] => {
+  const parseHealthBaseSheet = (values: string[][]): HealthRecord[] => {
     if (values.length <= 1) return [];
     const { headers, rows: mainRows } = pickHeaderRow(values, [
-      "valor",
-      "mes",
-      "mescomp",
-      "anocomp",
-    ]);
-    const isDiscountSheet = isDiscountLayout(sheetName, headers);
-    const monthIndex = getHeaderIndex(headers, [
-      "mes_n",
-      "mes_numero",
-      "mes",
-      "mes_no",
-      "mescomp",
-      "mes_comp",
-    ]);
-    const yearIndex = getHeaderIndex(headers, ["ano_n", "ano_no", "ano", "year", "anocomp"]);
-    const competenceIndex = getHeaderIndex(headers, [
-      "mescomp",
-      "mes_comp",
-      "mes",
-      "competencia",
-      "referencia",
-      "mes_competencia",
-    ]);
-    const premiumIndex = getHeaderIndex(headers, [
       "premio",
-      "mensalidade",
-      "valor_mensalidade",
-      ...(isDiscountSheet ? [] : ["valor", "valor_total"]),
+      "mes",
+      "mes_n",
+      "ano_n",
     ]);
-    const discountIndex = getHeaderIndex(headers, [
-      "descontado",
-      "desconto",
-      "valor_descontado",
-      ...(isDiscountSheet ? ["valor", "valor_total"] : []),
-    ]);
+    const monthIndex = getHeaderIndex(headers, ["mes_n", "mes_numero", "mes_no"]);
+    const yearIndex = getHeaderIndex(headers, ["ano_n", "ano_no"]);
+    const competenceIndex = getHeaderIndex(headers, ["mes", "competencia", "referencia"]);
+    const premiumIndex = getHeaderIndex(headers, ["premio"]);
     const brandIndex = getHeaderIndex(headers, ["marca"]);
     const roleIndex = getHeaderIndex(headers, [
       "cargo_de_para",
       "cargo_depara",
+      "cargo_de_para",
       "cargo",
-      "descricao_funcao",
     ]);
     const nameIndex = getHeaderIndex(headers, [
-      "nome_ajustado",
-      "nome_func",
+      "nome",
       "nome_segurado",
       "nome_beneficiario",
-      "nome",
     ]);
-    const chapaIndex = getHeaderIndex(headers, ["chapa", "matricula", "matricula_funcional"]);
+    const chaveIndex = getHeaderIndex(headers, ["chave"]);
     const cpfIndex = getHeaderIndex(headers, ["cpf_corrigido", "cpf_aux", "cpf"]);
     const statusIndex = getHeaderIndex(headers, ["situacao", "status"]);
     const holderTypeIndex = getHeaderIndex(headers, [
       "titular_ou_dependente",
       "parentesco",
-      "tipo",
     ]);
     const parsedRows: HealthRecord[] = [];
 
     for (const row of mainRows) {
-      const competenceFromColumn = parseCompetence(getCell(row, competenceIndex));
       const competenceByMonthYear = buildCompetenceFromMonthYear(
         getCell(row, monthIndex),
         getCell(row, yearIndex),
       );
-      const competence =
-        competenceFromColumn || competenceByMonthYear || monthNow();
+      const competence = competenceByMonthYear || parseCompetence(getCell(row, competenceIndex)) || monthNow();
       const match = competence.match(/^(\d{4})-(\d{2})$/);
       const year = match ? Number(match[1]) : new Date().getFullYear();
       const month = match ? Number(match[2]) : 1;
       const premiumAmount = parseNumber(getCell(row, premiumIndex));
-      const discountAmount = parseNumber(getCell(row, discountIndex));
       const status = getCell(row, statusIndex).trim() || "ATIVO";
 
-      if ((premiumAmount <= 0 && discountAmount <= 0) || !isActiveStatus(status)) continue;
+      if (premiumAmount <= 0 || !isActiveStatus(status)) continue;
 
       parsedRows.push({
         competence,
         year,
         month,
         premiumAmount,
-        discountAmount,
+        discountAmount: 0,
         brand: getCell(row, brandIndex).trim() || "Nao informado",
         role: getCell(row, roleIndex).trim() || "Nao informado",
-        employeeId: getCell(row, cpfIndex).trim() || getCell(row, chapaIndex).trim(),
+        employeeId: getCell(row, cpfIndex).trim() || getCell(row, chaveIndex).trim(),
         employeeName: getCell(row, nameIndex).trim(),
         status,
         holderType: getCell(row, holderTypeIndex).trim() || "Nao informado",
@@ -658,79 +623,123 @@ const readHealthDetailed = async (
     return parsedRows;
   };
 
-  const parseHealthCopartSheet = (
-    values: string[][],
-    sheetName: string,
-  ): HealthCopartRecord[] => {
+  const parseHealthMonthlyDiscountSheet = (values: string[][]): HealthRecord[] => {
+    if (values.length <= 1) return [];
+    const { headers, rows } = pickHeaderRow(values, ["valor", "mescomp", "anocomp"]);
+    const monthIndex = getHeaderIndex(headers, ["mescomp", "mes_comp"]);
+    const yearIndex = getHeaderIndex(headers, ["anocomp"]);
+    const brandIndex = getHeaderIndex(headers, ["marca"]);
+    const roleIndex = getHeaderIndex(headers, ["descricao_funcao", "cargo"]);
+    const nameIndex = getHeaderIndex(headers, ["nome_func", "nome"]);
+    const chapaIndex = getHeaderIndex(headers, ["chapa"]);
+    const cpfIndex = getHeaderIndex(headers, ["cpf"]);
+    const parsedRows: HealthRecord[] = [];
+
+    for (const row of rows) {
+      const competence = buildCompetenceFromMonthYear(
+        getCell(row, monthIndex),
+        getCell(row, yearIndex),
+      );
+      if (!competence) continue;
+      const match = competence.match(/^(\d{4})-(\d{2})$/);
+      const year = match ? Number(match[1]) : new Date().getFullYear();
+      const month = match ? Number(match[2]) : 1;
+      const discountAmount = parseNumber(getCell(row, getHeaderIndex(headers, ["valor", "valor_total"])));
+      if (discountAmount <= 0) continue;
+
+      parsedRows.push({
+        competence,
+        year,
+        month,
+        premiumAmount: 0,
+        discountAmount,
+        brand: getCell(row, brandIndex).trim() || "Nao informado",
+        role: getCell(row, roleIndex).trim() || "Nao informado",
+        employeeId: getCell(row, cpfIndex).trim() || getCell(row, chapaIndex).trim(),
+        employeeName: getCell(row, nameIndex).trim(),
+        status: "ATIVO",
+        holderType: "Nao informado",
+      });
+    }
+
+    return parsedRows;
+  };
+
+  const parseHealthCopartBaseSheet = (values: string[][]): HealthCopartRecord[] => {
     if (values.length <= 1) return [];
     const { headers, rows: copartRows } = pickHeaderRow(values, [
-      "valor",
-      "mescomp",
-      "anocomp",
-    ]);
-    const isDiscountSheet = isDiscountLayout(sheetName, headers);
-    const monthIndex = getHeaderIndex(headers, [
-      "mes_n",
-      "mes_numero",
-      "mes",
-      "mes_referencia",
-      "mescomp",
-      "mes_comp",
-    ]);
-    const yearIndex = getHeaderIndex(headers, ["ano_n", "ano", "ano_no", "year", "anocomp"]);
-    const competenceIndex = getHeaderIndex(headers, [
-      "mescomp",
-      "mes_comp",
-      "mes",
-      "mes_referencia",
-      "competencia",
-      "referencia",
-    ]);
-    const copartIndex = getHeaderIndex(headers, [
       "valor_copay",
-      "coparticipacao",
-      "valor_coparticipacao",
-      "valor_copart",
-      "copart",
-      ...(isDiscountSheet ? [] : ["premio", "valor"]),
+      "mes_referencia",
+      "ano",
     ]);
-    const copartDiscountIndex = getHeaderIndex(headers, [
-      "desconto_copart",
-      "desconto",
-      "descontado",
-      "valor_descontado",
-      ...(isDiscountSheet ? ["valor", "valor_total"] : []),
-    ]);
+    const monthIndex = getHeaderIndex(headers, ["mes_referencia"]);
+    const yearIndex = getHeaderIndex(headers, ["ano"]);
+    const competenceIndex = getHeaderIndex(headers, ["mes_referencia", "competencia", "referencia"]);
+    const copartIndex = getHeaderIndex(headers, ["valor_copay"]);
     const brandIndex = getHeaderIndex(headers, ["marca"]);
     const nameIndex = getHeaderIndex(headers, [
-      "nome_func",
       "nome_beneficiario",
-      "nome_segurado",
       "nome",
     ]);
-    const chapaIndex = getHeaderIndex(headers, ["chapa", "matricula", "matricula_funcional"]);
-    const cpfIndex = getHeaderIndex(headers, ["cpf_corrigido", "cpf_aux", "cpf"]);
+    const cpfIndex = getHeaderIndex(headers, ["cpf"]);
     const parsedRows: HealthCopartRecord[] = [];
 
     for (const row of copartRows) {
-      const competenceFromColumn = parseCompetence(getCell(row, competenceIndex));
       const competenceByMonthYear = buildCompetenceFromMonthYear(
         getCell(row, monthIndex),
         getCell(row, yearIndex),
       );
-      const competence = competenceFromColumn || competenceByMonthYear || monthNow();
+      const competence = competenceByMonthYear || parseCompetence(getCell(row, competenceIndex)) || monthNow();
       const match = competence.match(/^(\d{4})-(\d{2})$/);
       const year = match ? Number(match[1]) : new Date().getFullYear();
       const month = match ? Number(match[2]) : 1;
       const copartAmount = parseNumber(getCell(row, copartIndex));
-      const copartDiscountAmount = parseNumber(getCell(row, copartDiscountIndex));
-      if (copartAmount <= 0 && copartDiscountAmount <= 0) continue;
+      if (copartAmount <= 0) continue;
 
       parsedRows.push({
         competence,
         year,
         month,
         copartAmount,
+        copartDiscountAmount: 0,
+        brand: getCell(row, brandIndex).trim() || "Nao informado",
+        employeeId: getCell(row, cpfIndex).trim(),
+        employeeName: getCell(row, nameIndex).trim(),
+      });
+    }
+
+    return parsedRows;
+  };
+
+  const parseHealthCopartDiscountSheet = (values: string[][]): HealthCopartRecord[] => {
+    if (values.length <= 1) return [];
+    const { headers, rows } = pickHeaderRow(values, ["valor", "mescomp", "anocomp"]);
+    const monthIndex = getHeaderIndex(headers, ["mescomp", "mes_comp"]);
+    const yearIndex = getHeaderIndex(headers, ["anocomp"]);
+    const brandIndex = getHeaderIndex(headers, ["marca"]);
+    const nameIndex = getHeaderIndex(headers, ["nome_func", "nome"]);
+    const chapaIndex = getHeaderIndex(headers, ["chapa"]);
+    const cpfIndex = getHeaderIndex(headers, ["cpf"]);
+    const valueIndex = getHeaderIndex(headers, ["valor", "valor_total"]);
+    const parsedRows: HealthCopartRecord[] = [];
+
+    for (const row of rows) {
+      const competence = buildCompetenceFromMonthYear(
+        getCell(row, monthIndex),
+        getCell(row, yearIndex),
+      );
+      if (!competence) continue;
+      const match = competence.match(/^(\d{4})-(\d{2})$/);
+      const year = match ? Number(match[1]) : new Date().getFullYear();
+      const month = match ? Number(match[2]) : 1;
+      const copartDiscountAmount = parseNumber(getCell(row, valueIndex));
+      if (copartDiscountAmount <= 0) continue;
+
+      parsedRows.push({
+        competence,
+        year,
+        month,
+        copartAmount: 0,
         copartDiscountAmount,
         brand: getCell(row, brandIndex).trim() || "Nao informado",
         employeeId: getCell(row, cpfIndex).trim() || getCell(row, chapaIndex).trim(),
@@ -742,13 +751,13 @@ const readHealthDetailed = async (
   };
 
   const mainValues = await listSheetRows(benefit.spreadsheetId, benefit.sheetName);
-  const main = parseHealthMainSheet(mainValues, benefit.sheetName);
+  const main = parseHealthBaseSheet(mainValues);
 
   const mainDiscountSheetName = env.INDICATORS_HEALTH_DISCOUNT_SHEET_NAME;
   if (mainDiscountSheetName && mainDiscountSheetName !== benefit.sheetName) {
     try {
       const discountValues = await listSheetRows(benefit.spreadsheetId, mainDiscountSheetName);
-      main.push(...parseHealthMainSheet(discountValues, mainDiscountSheetName));
+      main.push(...parseHealthMonthlyDiscountSheet(discountValues));
     } catch (error) {
       throw new Error(
         `Falha ao ler descontos de mensalidade (${mainDiscountSheetName}): ${
@@ -762,7 +771,7 @@ const readHealthDetailed = async (
   if (benefit.secondarySheetName) {
     try {
       const copartValues = await listSheetRows(benefit.spreadsheetId, benefit.secondarySheetName);
-      copart.push(...parseHealthCopartSheet(copartValues, benefit.secondarySheetName));
+      copart.push(...parseHealthCopartBaseSheet(copartValues));
 
       const copartDiscountSheetName = env.INDICATORS_HEALTH_COPART_DISCOUNT_SHEET_NAME;
       if (
@@ -773,7 +782,7 @@ const readHealthDetailed = async (
           benefit.spreadsheetId,
           copartDiscountSheetName,
         );
-        copart.push(...parseHealthCopartSheet(discountValues, copartDiscountSheetName));
+        copart.push(...parseHealthCopartDiscountSheet(discountValues));
       }
     } catch (error) {
       throw new Error(
