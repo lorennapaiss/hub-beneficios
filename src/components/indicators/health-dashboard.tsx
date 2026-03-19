@@ -86,12 +86,22 @@ export function HealthDashboard({ records, copartRecords, mode = "B" }: HealthDa
     });
   }, [records, year, month, brand, role, status, holderType, debouncedPerson]);
 
+  const filteredPremiumRows = useMemo(
+    () => filteredMain.filter((row) => row.premiumAmount > 0),
+    [filteredMain],
+  );
+
+  const filteredDiscountRows = useMemo(
+    () => filteredMain.filter((row) => row.discountAmount > 0),
+    [filteredMain],
+  );
+
   const selectedPeople = useMemo(() => {
-    const keys = filteredMain
+    const keys = filteredPremiumRows
       .map((r) => personKey(r.employeeId, r.employeeName))
       .filter((value) => value.length > 0);
     return new Set(keys);
-  }, [filteredMain]);
+  }, [filteredPremiumRows]);
 
   const filteredCopart = useMemo(() => {
     const query = debouncedPerson.trim().toLowerCase();
@@ -114,8 +124,8 @@ export function HealthDashboard({ records, copartRecords, mode = "B" }: HealthDa
   }, [copartRecords, year, month, brand, debouncedPerson, role, status, holderType, selectedPeople]);
 
   const metrics = useMemo(() => {
-    const totalPremium = sum(filteredMain.map((r) => r.premiumAmount));
-    const totalDiscount = sum(filteredMain.map((r) => r.discountAmount));
+    const totalPremium = sum(filteredPremiumRows.map((r) => r.premiumAmount));
+    const totalDiscount = sum(filteredDiscountRows.map((r) => r.discountAmount));
     const netCost = totalPremium - totalDiscount;
 
     const byMonthLives = new Map<string, Set<string>>();
@@ -123,18 +133,20 @@ export function HealthDashboard({ records, copartRecords, mode = "B" }: HealthDa
     const byBrandPremium = new Map<string, number>();
     const byBrandDiscount = new Map<string, number>();
 
-    for (const row of filteredMain) {
+    for (const row of filteredPremiumRows) {
       const mk = monthKey(row.year, row.month);
       if (!byMonthLives.has(mk)) byMonthLives.set(mk, new Set<string>());
       byMonthPremium.set(mk, (byMonthPremium.get(mk) ?? 0) + row.premiumAmount);
 
-      if (row.premiumAmount > 0) {
-        const person = personKey(row.employeeId, row.employeeName);
-        if (person) byMonthLives.get(mk)?.add(person);
-      }
+      const person = personKey(row.employeeId, row.employeeName);
+      if (person) byMonthLives.get(mk)?.add(person);
 
       const b = row.brand || "Nao informado";
       byBrandPremium.set(b, (byBrandPremium.get(b) ?? 0) + row.premiumAmount);
+    }
+
+    for (const row of filteredDiscountRows) {
+      const b = row.brand || "Nao informado";
       byBrandDiscount.set(b, (byBrandDiscount.get(b) ?? 0) + row.discountAmount);
     }
 
@@ -189,7 +201,7 @@ export function HealthDashboard({ records, copartRecords, mode = "B" }: HealthDa
       descontoCopart: totalCopartDiscount,
       percentualDescontoCopart: pct(totalCopartDiscount, totalCopart),
     };
-  }, [filteredMain, filteredCopart]);
+  }, [filteredPremiumRows, filteredDiscountRows, filteredCopart]);
 
   const insightsContext = useMemo(
     () => ({
@@ -213,7 +225,7 @@ export function HealthDashboard({ records, copartRecords, mode = "B" }: HealthDa
       topPremiumBrands: metrics.mensalidadePorMarca.slice(0, 5),
       topCopartBrands: metrics.copartPorMarca.slice(0, 5),
       rows: {
-        mensalidades: filteredMain.length,
+        mensalidades: filteredPremiumRows.length,
         copart: filteredCopart.length,
       },
     }),
@@ -226,7 +238,7 @@ export function HealthDashboard({ records, copartRecords, mode = "B" }: HealthDa
       holderType,
       debouncedPerson,
       metrics,
-      filteredMain.length,
+      filteredPremiumRows.length,
       filteredCopart.length,
     ],
   );
@@ -296,7 +308,7 @@ export function HealthDashboard({ records, copartRecords, mode = "B" }: HealthDa
           <RankList title="Desconto por Marca" items={metrics.descontoPorMarca} max={maxRank(metrics.descontoPorMarca)} />
         </div>
         <div className="xl:col-span-2">
-          <MetricCard label="Registros filtrados" value={`${filteredMain.length} mensalidades | ${filteredCopart.length} copart`} icon={Users} tone="neutral" />
+          <MetricCard label="Registros filtrados" value={`${filteredPremiumRows.length} mensalidades | ${filteredCopart.length} copart`} icon={Users} tone="neutral" />
         </div>
       </div>
 
