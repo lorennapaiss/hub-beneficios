@@ -321,6 +321,14 @@ const getHeaderIndex = (headers: string[], aliases: string[]) => {
   return -1;
 };
 
+const hasHeader = (headers: string[], alias: string) => headers.includes(normalizeHeader(alias));
+
+const isDiscountLayout = (sheetName: string, headers: string[]) =>
+  /descontos?/i.test(sheetName) ||
+  (hasHeader(headers, "provdescbaseinc") &&
+    hasHeader(headers, "mescomp") &&
+    hasHeader(headers, "valor"));
+
 const getCell = (row: string[], index: number) => (index >= 0 ? row[index] ?? "" : "");
 
 const listSheetRows = async (spreadsheetId: string, sheetName: string) => {
@@ -541,13 +549,13 @@ const readHealthDetailed = async (
   const main: HealthRecord[] = [];
 
   if (mainValues.length > 1) {
-    const isDiscountSheet = /descontos?/i.test(benefit.sheetName);
     const { headers, rows: mainRows } = pickHeaderRow(mainValues, [
       "valor",
       "mes",
       "mescomp",
       "anocomp",
     ]);
+    const isDiscountSheet = isDiscountLayout(benefit.sheetName, headers);
     const monthIndex = getHeaderIndex(headers, [
       "mes_n",
       "mes_numero",
@@ -636,7 +644,6 @@ const readHealthDetailed = async (
   const copart: HealthCopartRecord[] = [];
   if (benefit.secondarySheetName) {
     try {
-      const isDiscountSheet = /descontos?/i.test(benefit.secondarySheetName);
       const copartValues = await listSheetRows(benefit.spreadsheetId, benefit.secondarySheetName);
       if (copartValues.length > 1) {
         const { headers, rows: copartRows } = pickHeaderRow(copartValues, [
@@ -644,6 +651,7 @@ const readHealthDetailed = async (
           "mescomp",
           "anocomp",
         ]);
+        const isDiscountSheet = isDiscountLayout(benefit.secondarySheetName, headers);
         const monthIndex = getHeaderIndex(headers, [
           "mes_n",
           "mes_numero",

@@ -125,10 +125,13 @@ export function HealthDashboard({ records, copartRecords, mode = "B" }: HealthDa
 
     for (const row of filteredMain) {
       const mk = monthKey(row.year, row.month);
-      const person = personKey(row.employeeId, row.employeeName);
       if (!byMonthLives.has(mk)) byMonthLives.set(mk, new Set<string>());
-      if (person) byMonthLives.get(mk)?.add(person);
       byMonthPremium.set(mk, (byMonthPremium.get(mk) ?? 0) + row.premiumAmount);
+
+      if (row.premiumAmount > 0) {
+        const person = personKey(row.employeeId, row.employeeName);
+        if (person) byMonthLives.get(mk)?.add(person);
+      }
 
       const b = row.brand || "Nao informado";
       byBrandPremium.set(b, (byBrandPremium.get(b) ?? 0) + row.premiumAmount);
