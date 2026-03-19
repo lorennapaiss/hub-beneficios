@@ -245,6 +245,13 @@ const parseMonthNumber = (value: string | undefined) => {
   const raw = removeDiacritics((value ?? "").trim().toLowerCase());
   if (!raw) return null;
 
+  // RM-style period field: MM/PP or MM-PP, where the first token is the competence month.
+  const monthPeriod = raw.match(/^(\d{1,2})[/-](\d{1,2})$/);
+  if (monthPeriod) {
+    const month = Number(monthPeriod[1]);
+    return month >= 1 && month <= 12 ? month : null;
+  }
+
   // Brazilian date formats in month fields: DD/MM/YYYY or DD-MM-YYYY
   const ddmmyyyy = raw.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
   if (ddmmyyyy) {
