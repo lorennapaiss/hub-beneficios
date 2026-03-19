@@ -61,7 +61,7 @@ export function HealthDashboard({ records, copartRecords, mode = "B" }: HealthDa
 
     return {
       years: uniq(records.map((r) => String(r.year))).sort((a, b) => Number(b) - Number(a)),
-      months: uniq(records.map((r) => String(r.month))).sort((a, b) => Number(a) - Number(b)),
+      months: Array.from({ length: 12 }, (_, index) => String(index + 1)),
       brands: uniq(records.map((r) => r.brand || "Nao informado")),
       roles: uniq(records.map((r) => r.role || "Nao informado")),
       statuses: uniq(records.map((r) => r.status || "Nao informado")),
