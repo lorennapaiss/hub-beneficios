@@ -263,19 +263,23 @@ const parseCompetence = (value: string | undefined) => {
   const mmyyyy = raw.match(/^(\d{1,2})[-/](\d{4})$/);
   if (mmyyyy) return toCompetence(Number(mmyyyy[2]), Number(mmyyyy[1]));
 
+  const mmyy = raw.match(/^(\d{1,2})[-/](\d{2})$/);
+  if (mmyy) return toCompetence(2000 + Number(mmyy[2]), Number(mmyy[1]));
+
   // Brazilian date format: DD/MM/YYYY (e.g. 01/08/2025 -> 2025-08)
   const ddmmyyyy = raw.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
   if (ddmmyyyy) return toCompetence(Number(ddmmyyyy[3]), Number(ddmmyyyy[2]));
+
+  const ddmmyy = raw.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2})$/);
+  if (ddmmyy) return toCompetence(2000 + Number(ddmmyy[3]), Number(ddmmyy[2]));
+
+  const isoDate = raw.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+  if (isoDate) return toCompetence(Number(isoDate[1]), Number(isoDate[2]));
 
   const monthPt = parseMonthNumber(raw);
   if (monthPt) {
     const nowYear = new Date().getFullYear();
     return toCompetence(nowYear, monthPt);
-  }
-
-  const parsedDate = new Date(raw);
-  if (!Number.isNaN(parsedDate.getTime())) {
-    return toCompetence(parsedDate.getFullYear(), parsedDate.getMonth() + 1);
   }
 
   return "";
