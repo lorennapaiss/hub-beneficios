@@ -25,6 +25,8 @@ const EnvSchema = z
     INDICATORS_MEAL_SHEETS_ID: z.string().optional(),
     INDICATORS_HEALTH_SHEET_NAME: z.string().optional(),
     INDICATORS_HEALTH_COPART_SHEET_NAME: z.string().optional(),
+    INDICATORS_HEALTH_DISCOUNT_SHEET_NAME: z.string().optional(),
+    INDICATORS_HEALTH_COPART_DISCOUNT_SHEET_NAME: z.string().optional(),
     INDICATORS_DENTAL_SHEET_NAME: z.string().optional(),
     INDICATORS_TRANSPORT_SHEET_NAME: z.string().optional(),
     INDICATORS_MEAL_SHEET_NAME: z.string().optional(),
@@ -75,11 +77,19 @@ export const env = {
   INDICATORS_HEALTH_SHEET_NAME:
     (parsed.success
       ? parsed.data.INDICATORS_HEALTH_SHEET_NAME
-      : process.env.INDICATORS_HEALTH_SHEET_NAME) ?? "indicadores_saude",
+      : process.env.INDICATORS_HEALTH_SHEET_NAME) ?? "BASE DEMONSTRATIVO",
   INDICATORS_HEALTH_COPART_SHEET_NAME:
     (parsed.success
       ? parsed.data.INDICATORS_HEALTH_COPART_SHEET_NAME
       : process.env.INDICATORS_HEALTH_COPART_SHEET_NAME) ?? "COPART",
+  INDICATORS_HEALTH_DISCOUNT_SHEET_NAME:
+    (parsed.success
+      ? parsed.data.INDICATORS_HEALTH_DISCOUNT_SHEET_NAME
+      : process.env.INDICATORS_HEALTH_DISCOUNT_SHEET_NAME) ?? "DESCONTOS MENSALIDADE",
+  INDICATORS_HEALTH_COPART_DISCOUNT_SHEET_NAME:
+    (parsed.success
+      ? parsed.data.INDICATORS_HEALTH_COPART_DISCOUNT_SHEET_NAME
+      : process.env.INDICATORS_HEALTH_COPART_DISCOUNT_SHEET_NAME) ?? "DESCONTOS COPART",
   INDICATORS_HEALTH_SHEETS_ID:
     (parsed.success
       ? parsed.data.INDICATORS_HEALTH_SHEETS_ID
