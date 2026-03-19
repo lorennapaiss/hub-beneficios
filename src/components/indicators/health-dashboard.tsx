@@ -167,6 +167,7 @@ export function HealthDashboard({ records, copartRecords, mode = "B" }: HealthDa
 
     return {
       custoAcumulado: totalPremium,
+      descontoPlanoSaude: totalDiscount,
       custoMedioPorVida:
         uniquePersonMonthCount > 0 ? totalPremium / uniquePersonMonthCount : 0,
       custoMedioPorVidaPosDesconto:
@@ -260,10 +261,12 @@ export function HealthDashboard({ records, copartRecords, mode = "B" }: HealthDa
         <Input value={person} onChange={(e) => setPerson(e.target.value)} placeholder="Nome/CPF" />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
+      <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-8">
         <MetricCard label="Custo Acumulado" value={formatCurrencyCompact(metrics.custoAcumulado)} icon={HandCoins} tone="cost" />
         <MetricCard label="Nº de Vidas Ativas" value={String(metrics.vidasAtivas)} icon={HeartPulse} tone="people" />
         <MetricCard label="Total Copart" value={formatCurrencyCompact(metrics.totalCopart)} icon={Activity} tone="cost" />
+        <MetricCard label="Desconto Plano de Saude" value={formatCurrencyCompact(metrics.descontoPlanoSaude)} icon={BadgePercent} tone="percent" />
+        <MetricCard label="Desconto Coparticipacao" value={formatCurrencyCompact(metrics.descontoCopart)} icon={BadgePercent} tone="percent" />
         <MetricCard label="Custo Medio por Vida" value={formatCurrencyCompact(metrics.custoMedioPorVida)} icon={Users} tone="people" />
         <MetricCard label="Custo Medio por Vida Pos Desconto" value={formatCurrencyCompact(metrics.custoMedioPorVidaPosDesconto)} icon={BadgePercent} tone="percent" />
         <MetricCard label="Custo Mensal Copart" value={formatCurrencyCompact(metrics.custoMensalCopart)} icon={HandCoins} tone="cost" />

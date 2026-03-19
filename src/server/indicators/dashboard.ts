@@ -546,6 +546,8 @@ const readHealthDetailed = async (
     ]);
     const yearIndex = getHeaderIndex(headers, ["ano_n", "ano_no", "ano", "year", "anocomp"]);
     const competenceIndex = getHeaderIndex(headers, [
+      "mescomp",
+      "mes_comp",
       "mes",
       "competencia",
       "referencia",
@@ -587,12 +589,13 @@ const readHealthDetailed = async (
     ]);
 
     for (const row of mainRows) {
+      const competenceFromColumn = parseCompetence(getCell(row, competenceIndex));
       const competenceByMonthYear = buildCompetenceFromMonthYear(
         getCell(row, monthIndex),
         getCell(row, yearIndex),
       );
       const competence =
-        competenceByMonthYear || parseCompetence(getCell(row, competenceIndex)) || monthNow();
+        competenceFromColumn || competenceByMonthYear || monthNow();
       const match = competence.match(/^(\d{4})-(\d{2})$/);
       const year = match ? Number(match[1]) : new Date().getFullYear();
       const month = match ? Number(match[2]) : 1;
@@ -639,6 +642,8 @@ const readHealthDetailed = async (
         ]);
         const yearIndex = getHeaderIndex(headers, ["ano_n", "ano", "ano_no", "year", "anocomp"]);
         const competenceIndex = getHeaderIndex(headers, [
+          "mescomp",
+          "mes_comp",
           "mes",
           "mes_referencia",
           "competencia",
@@ -670,12 +675,13 @@ const readHealthDetailed = async (
         const cpfIndex = getHeaderIndex(headers, ["cpf_corrigido", "cpf_aux", "cpf"]);
 
         for (const row of copartRows) {
+          const competenceFromColumn = parseCompetence(getCell(row, competenceIndex));
           const competenceByMonthYear = buildCompetenceFromMonthYear(
             getCell(row, monthIndex),
             getCell(row, yearIndex),
           );
           const competence =
-            competenceByMonthYear || parseCompetence(getCell(row, competenceIndex)) || monthNow();
+            competenceFromColumn || competenceByMonthYear || monthNow();
           const match = competence.match(/^(\d{4})-(\d{2})$/);
           const year = match ? Number(match[1]) : new Date().getFullYear();
           const month = match ? Number(match[2]) : 1;
