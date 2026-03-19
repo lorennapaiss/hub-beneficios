@@ -236,6 +236,11 @@ const parseNumber = (value: string | undefined) => {
 const toCompetence = (year: number, month: number) =>
   `${year}-${String(month).padStart(2, "0")}`;
 
+const isPlausibleCompetence = (year: number, month: number) => {
+  const currentYear = new Date().getFullYear();
+  return month >= 1 && month <= 12 && year >= currentYear - 2 && year <= currentYear + 1;
+};
+
 const parseMonthNumber = (value: string | undefined) => {
   const raw = removeDiacritics((value ?? "").trim().toLowerCase());
   if (!raw) return null;
@@ -257,29 +262,32 @@ const parseCompetence = (value: string | undefined) => {
   const raw = (value ?? "").trim();
   if (!raw) return "";
 
+  const finalize = (year: number, month: number) =>
+    isPlausibleCompetence(year, month) ? toCompetence(year, month) : "";
+
   const yyyymm = raw.match(/^(\d{4})[-/](\d{1,2})$/);
-  if (yyyymm) return toCompetence(Number(yyyymm[1]), Number(yyyymm[2]));
+  if (yyyymm) return finalize(Number(yyyymm[1]), Number(yyyymm[2]));
 
   const mmyyyy = raw.match(/^(\d{1,2})[-/](\d{4})$/);
-  if (mmyyyy) return toCompetence(Number(mmyyyy[2]), Number(mmyyyy[1]));
+  if (mmyyyy) return finalize(Number(mmyyyy[2]), Number(mmyyyy[1]));
 
   const mmyy = raw.match(/^(\d{1,2})[-/](\d{2})$/);
-  if (mmyy) return toCompetence(2000 + Number(mmyy[2]), Number(mmyy[1]));
+  if (mmyy) return finalize(2000 + Number(mmyy[2]), Number(mmyy[1]));
 
   // Brazilian date format: DD/MM/YYYY (e.g. 01/08/2025 -> 2025-08)
   const ddmmyyyy = raw.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
-  if (ddmmyyyy) return toCompetence(Number(ddmmyyyy[3]), Number(ddmmyyyy[2]));
+  if (ddmmyyyy) return finalize(Number(ddmmyyyy[3]), Number(ddmmyyyy[2]));
 
   const ddmmyy = raw.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2})$/);
-  if (ddmmyy) return toCompetence(2000 + Number(ddmmyy[3]), Number(ddmmyy[2]));
+  if (ddmmyy) return finalize(2000 + Number(ddmmyy[3]), Number(ddmmyy[2]));
 
   const isoDate = raw.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
-  if (isoDate) return toCompetence(Number(isoDate[1]), Number(isoDate[2]));
+  if (isoDate) return finalize(Number(isoDate[1]), Number(isoDate[2]));
 
   const monthPt = parseMonthNumber(raw);
   if (monthPt) {
     const nowYear = new Date().getFullYear();
-    return toCompetence(nowYear, monthPt);
+    return finalize(nowYear, monthPt);
   }
 
   return "";
@@ -355,7 +363,7 @@ const buildCompetenceFromMonthYear = (
 ) => {
   const month = parseMonthNumber(monthRaw);
   const year = Number((yearRaw ?? "").replace(/[^\d]/g, ""));
-  if (!month || !Number.isFinite(year) || year < 1900) return "";
+  if (!month || !Number.isFinite(year) || !isPlausibleCompetence(year, month)) return "";
   return toCompetence(year, month);
 };
 
