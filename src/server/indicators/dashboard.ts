@@ -529,23 +529,62 @@ const readHealthDetailed = async (
   const main: HealthRecord[] = [];
 
   if (mainValues.length > 1) {
+    const isDiscountSheet = /descontos?/i.test(benefit.sheetName);
     const { headers, rows: mainRows } = pickHeaderRow(mainValues, [
-      "premio",
+      "valor",
       "mes",
-      "mes_n",
-      "ano_n",
+      "mescomp",
+      "anocomp",
     ]);
-    const monthIndex = getHeaderIndex(headers, ["mes_n", "mes_numero", "mes", "mes_no"]);
-    const yearIndex = getHeaderIndex(headers, ["ano_n", "ano_no", "ano", "year"]);
-    const competenceIndex = getHeaderIndex(headers, ["mes", "competencia", "referencia"]);
-    const premiumIndex = getHeaderIndex(headers, ["premio", "valor", "valor_total"]);
-    const discountIndex = getHeaderIndex(headers, ["descontado", "desconto", "valor_descontado"]);
+    const monthIndex = getHeaderIndex(headers, [
+      "mes_n",
+      "mes_numero",
+      "mes",
+      "mes_no",
+      "mescomp",
+      "mes_comp",
+    ]);
+    const yearIndex = getHeaderIndex(headers, ["ano_n", "ano_no", "ano", "year", "anocomp"]);
+    const competenceIndex = getHeaderIndex(headers, [
+      "mes",
+      "competencia",
+      "referencia",
+      "mes_competencia",
+    ]);
+    const premiumIndex = getHeaderIndex(headers, [
+      "premio",
+      "mensalidade",
+      "valor_mensalidade",
+      ...(isDiscountSheet ? [] : ["valor", "valor_total"]),
+    ]);
+    const discountIndex = getHeaderIndex(headers, [
+      "descontado",
+      "desconto",
+      "valor_descontado",
+      ...(isDiscountSheet ? ["valor", "valor_total"] : []),
+    ]);
     const brandIndex = getHeaderIndex(headers, ["marca"]);
-    const roleIndex = getHeaderIndex(headers, ["cargo_de_para", "cargo_depara", "cargo"]);
-    const nameIndex = getHeaderIndex(headers, ["nome_segurado", "nome_beneficiario", "nome"]);
+    const roleIndex = getHeaderIndex(headers, [
+      "cargo_de_para",
+      "cargo_depara",
+      "cargo",
+      "descricao_funcao",
+    ]);
+    const nameIndex = getHeaderIndex(headers, [
+      "nome_ajustado",
+      "nome_func",
+      "nome_segurado",
+      "nome_beneficiario",
+      "nome",
+    ]);
+    const chapaIndex = getHeaderIndex(headers, ["chapa", "matricula", "matricula_funcional"]);
     const cpfIndex = getHeaderIndex(headers, ["cpf_corrigido", "cpf_aux", "cpf"]);
     const statusIndex = getHeaderIndex(headers, ["situacao", "status"]);
-    const holderTypeIndex = getHeaderIndex(headers, ["titular_ou_dependente", "parentesco"]);
+    const holderTypeIndex = getHeaderIndex(headers, [
+      "titular_ou_dependente",
+      "parentesco",
+      "tipo",
+    ]);
 
     for (const row of mainRows) {
       const competenceByMonthYear = buildCompetenceFromMonthYear(
@@ -561,7 +600,7 @@ const readHealthDetailed = async (
       const discountAmount = parseNumber(getCell(row, discountIndex));
       const status = getCell(row, statusIndex).trim() || "ATIVO";
 
-      if (premiumAmount <= 0 || !isActiveStatus(status)) continue;
+      if ((premiumAmount <= 0 && discountAmount <= 0) || !isActiveStatus(status)) continue;
 
       main.push({
         competence,
@@ -571,7 +610,7 @@ const readHealthDetailed = async (
         discountAmount,
         brand: getCell(row, brandIndex).trim() || "Nao informado",
         role: getCell(row, roleIndex).trim() || "Nao informado",
-        employeeId: getCell(row, cpfIndex).trim(),
+        employeeId: getCell(row, cpfIndex).trim() || getCell(row, chapaIndex).trim(),
         employeeName: getCell(row, nameIndex).trim(),
         status,
         holderType: getCell(row, holderTypeIndex).trim() || "Nao informado",
@@ -582,20 +621,23 @@ const readHealthDetailed = async (
   const copart: HealthCopartRecord[] = [];
   if (benefit.secondarySheetName) {
     try {
+      const isDiscountSheet = /descontos?/i.test(benefit.secondarySheetName);
       const copartValues = await listSheetRows(benefit.spreadsheetId, benefit.secondarySheetName);
       if (copartValues.length > 1) {
         const { headers, rows: copartRows } = pickHeaderRow(copartValues, [
-          "valor_copay",
-          "mes_referencia",
-          "ano",
+          "valor",
+          "mescomp",
+          "anocomp",
         ]);
         const monthIndex = getHeaderIndex(headers, [
           "mes_n",
           "mes_numero",
           "mes",
           "mes_referencia",
+          "mescomp",
+          "mes_comp",
         ]);
-        const yearIndex = getHeaderIndex(headers, ["ano_n", "ano", "ano_no", "year"]);
+        const yearIndex = getHeaderIndex(headers, ["ano_n", "ano", "ano_no", "year", "anocomp"]);
         const competenceIndex = getHeaderIndex(headers, [
           "mes",
           "mes_referencia",
@@ -608,21 +650,23 @@ const readHealthDetailed = async (
           "valor_coparticipacao",
           "valor_copart",
           "copart",
-          "premio",
-          "valor",
+          ...(isDiscountSheet ? [] : ["premio", "valor"]),
         ]);
         const copartDiscountIndex = getHeaderIndex(headers, [
           "desconto_copart",
           "desconto",
           "descontado",
           "valor_descontado",
+          ...(isDiscountSheet ? ["valor", "valor_total"] : []),
         ]);
         const brandIndex = getHeaderIndex(headers, ["marca"]);
         const nameIndex = getHeaderIndex(headers, [
+          "nome_func",
           "nome_beneficiario",
           "nome_segurado",
           "nome",
         ]);
+        const chapaIndex = getHeaderIndex(headers, ["chapa", "matricula", "matricula_funcional"]);
         const cpfIndex = getHeaderIndex(headers, ["cpf_corrigido", "cpf_aux", "cpf"]);
 
         for (const row of copartRows) {
@@ -646,7 +690,7 @@ const readHealthDetailed = async (
             copartAmount,
             copartDiscountAmount,
             brand: getCell(row, brandIndex).trim() || "Nao informado",
-            employeeId: getCell(row, cpfIndex).trim(),
+            employeeId: getCell(row, cpfIndex).trim() || getCell(row, chapaIndex).trim(),
             employeeName: getCell(row, nameIndex).trim(),
           });
         }
