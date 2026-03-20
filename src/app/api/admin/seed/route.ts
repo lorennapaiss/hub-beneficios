@@ -247,6 +247,19 @@ const SCHEMA: Record<string, string[]> = {
     "created_at",
     "created_by",
   ],
+  user_brand_access: [
+    "id",
+    "user_id",
+    "user_email",
+    "brand_id",
+    "brand_code",
+    "brand_name",
+    "role",
+    "is_active",
+    "created_at",
+    "updated_at",
+    "created_by",
+  ],
 };
 
 const ensureSeedEnabled = () => env.ENABLE_SEED === "true";

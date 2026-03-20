@@ -3,7 +3,11 @@ import {
   getIndicatorDetailData,
   type IndicatorDetailByBenefit,
 } from "@/server/indicators/dashboard";
-import { handleApiError, requireAllowedUser } from "@/server/payments/api-utils";
+import {
+  logIndicatorsAuthorizationEvent,
+  requireIndicatorsAccess,
+} from "@/server/indicators/access";
+import { handleApiError } from "@/server/payments/api-utils";
 
 const isBenefitKey = (value: string): value is keyof IndicatorDetailByBenefit =>
   ["health", "dental", "transport", "meal"].includes(value);
@@ -12,7 +16,7 @@ export async function GET(
   _request: Request,
   context: { params: Promise<{ benefit: string }> },
 ) {
-  const { response } = await requireAllowedUser();
+  const { session, scope, response } = await requireIndicatorsAccess();
   if (response) return response;
 
   try {
@@ -23,18 +27,28 @@ export async function GET(
 
     const data =
       benefit === "health"
-        ? await getIndicatorDetailData("health")
+        ? await getIndicatorDetailData("health", scope)
         : benefit === "dental"
-          ? await getIndicatorDetailData("dental")
+          ? await getIndicatorDetailData("dental", scope)
           : benefit === "meal"
-            ? await getIndicatorDetailData("meal")
-            : await getIndicatorDetailData("transport");
+            ? await getIndicatorDetailData("meal", scope)
+            : await getIndicatorDetailData("transport", scope);
+
+    await logIndicatorsAuthorizationEvent({
+      action: "INDICATORS_ACCESS_GRANTED",
+      createdBy: session?.user?.email ?? scope?.email ?? "unknown",
+      metadata: {
+        path: `/api/indicators/${benefit}`,
+        role: scope?.isAdmin ? "ADMIN" : "BRAND_SCOPE",
+        allowedBrands: scope?.allowedBrands ?? [],
+      },
+    });
 
     return NextResponse.json({
       data,
       meta: {
         benefit,
-        cache: "hit",
+        cache: "scoped",
         generatedAt: new Date().toISOString(),
       },
     });

@@ -1,7 +1,10 @@
 import "server-only";
 import { google } from "googleapis";
 import { env } from "@/lib/env";
-import { getCache, setCache } from "@/server/cache";
+import {
+  filterBrandsForScope,
+  type IndicatorAccessScope,
+} from "@/server/indicators/access";
 import { getGoogleAuth } from "@/server/payments/google";
 
 type BenefitKey = "health" | "dental" | "transport" | "meal";
@@ -189,6 +192,15 @@ export type IndicatorDetailByBenefit = {
 
 export type IndicatorDetailResponse<K extends BenefitKey = BenefitKey> =
   IndicatorDetailByBenefit[K];
+
+type IndicatorsSourceData = {
+  records: RawIndicator[];
+  healthRecords: HealthRecord[];
+  healthCopartRecords: HealthCopartRecord[];
+  dentalRecords: DentalRecord[];
+  mealRecords: MealRecord[];
+  warnings: string[];
+};
 
 const BENEFITS: BenefitConfig[] = [
   {
@@ -986,7 +998,7 @@ const buildRanking = (rows: RawIndicator[], field: "costCenter" | "provider") =>
     .slice(0, 8);
 };
 
-const getIndicatorsDashboardDataUncached = async (): Promise<IndicatorsDashboardData> => {
+export const getIndicatorsDashboardDataUncached = async (): Promise<IndicatorsDashboardData> => {
   const hasAnySpreadsheet = BENEFITS.some((benefit) => Boolean(benefit.spreadsheetId));
   if (!hasAnySpreadsheet) {
     throw new Error("Configure INDICATORS_SHEETS_ID ou INDICATORS_*_SHEETS_ID.");
@@ -1192,43 +1204,13 @@ const getIndicatorsDashboardDataUncached = async (): Promise<IndicatorsDashboard
 };
 
 const INDICATORS_CACHE_TTL_MS = 10 * 60 * 1000;
-let indicatorsCache:
+let indicatorsSourceCache:
   | {
       expiresAt: number;
-      data: IndicatorsDashboardData;
+      data: IndicatorsSourceData;
     }
   | null = null;
-let indicatorsInFlight: Promise<IndicatorsDashboardData> | null = null;
-
-export const getIndicatorsDashboardData = async (): Promise<IndicatorsDashboardData> => {
-  const now = Date.now();
-  if (indicatorsCache && indicatorsCache.expiresAt > now) {
-    return indicatorsCache.data;
-  }
-
-  if (indicatorsInFlight) {
-    return indicatorsInFlight;
-  }
-
-  indicatorsInFlight = getIndicatorsDashboardDataUncached()
-    .then((data) => {
-      indicatorsCache = {
-        data,
-        expiresAt: Date.now() + INDICATORS_CACHE_TTL_MS,
-      };
-      return data;
-    })
-    .finally(() => {
-      indicatorsInFlight = null;
-    });
-
-  return indicatorsInFlight;
-};
-
-const INDICATORS_OVERVIEW_CACHE_KEY = "indicators:overview";
-const indicatorsDetailCacheKey = (benefit: BenefitKey) => `indicators:detail:${benefit}`;
-let indicatorsOverviewInFlight: Promise<IndicatorsOverviewData> | null = null;
-const indicatorsDetailInFlight = new Map<BenefitKey, Promise<IndicatorDetailResponse>>();
+let indicatorsSourceInFlight: Promise<IndicatorsSourceData> | null = null;
 
 const mapHealthMainToOverviewRaw = (rows: HealthRecord[]): RawIndicator[] =>
   rows.map((row) => ({
@@ -1264,6 +1246,44 @@ const mapTransportDetailRecords = (rows: RawIndicator[]): TransportRecord[] =>
       brand: row.brand,
       role: row.role,
     }));
+
+const buildDashboardFromSource = ({
+  records,
+  healthRecords,
+  healthCopartRecords,
+  dentalRecords,
+  mealRecords,
+  warnings,
+}: IndicatorsSourceData): IndicatorsDashboardData => {
+  const overview = buildOverviewFromRecords(records, warnings);
+
+  return {
+    ...overview,
+    transportRecords: mapTransportDetailRecords(records),
+    healthRecords,
+    healthCopartRecords,
+    dentalRecords,
+    mealRecords,
+  };
+};
+
+const applyIndicatorScopeToSource = (
+  source: IndicatorsSourceData,
+  scope?: Pick<IndicatorAccessScope, "isAdmin" | "allowedBrands">,
+): IndicatorsSourceData => {
+  if (!scope || scope.isAdmin) {
+    return source;
+  }
+
+  return {
+    records: filterBrandsForScope(source.records, scope),
+    healthRecords: filterBrandsForScope(source.healthRecords, scope),
+    healthCopartRecords: filterBrandsForScope(source.healthCopartRecords, scope),
+    dentalRecords: filterBrandsForScope(source.dentalRecords, scope),
+    mealRecords: filterBrandsForScope(source.mealRecords, scope),
+    warnings: source.warnings,
+  };
+};
 
 const buildOverviewFromRecords = (
   records: RawIndicator[],
@@ -1377,17 +1397,50 @@ const buildOverviewFromRecords = (
   };
 };
 
-const getIndicatorsOverviewDataUncached = async (): Promise<IndicatorsOverviewData> => {
+const getIndicatorsSourceDataUncached = async (): Promise<IndicatorsSourceData> => {
+  const hasAnySpreadsheet = BENEFITS.some((benefit) => Boolean(benefit.spreadsheetId));
+  if (!hasAnySpreadsheet) {
+    throw new Error("Configure INDICATORS_SHEETS_ID ou INDICATORS_*_SHEETS_ID.");
+  }
+
   const warnings: string[] = [];
+  let healthMainRecords: HealthRecord[] = [];
+  let healthCopartRecords: HealthCopartRecord[] = [];
+  let dentalDetailedRecords: DentalRecord[] = [];
+  let mealDetailedRecords: MealRecord[] = [];
 
   const datasets = await Promise.all(
     BENEFITS.map(async (benefit) => {
       try {
         if (benefit.key === "health") {
-          const healthData = await readHealthDetailed(benefit);
-          return mapHealthMainToOverviewRaw(healthData.main);
+          try {
+            const healthData = await readHealthDetailed(benefit);
+            healthMainRecords = healthData.main;
+            healthCopartRecords = healthData.copart;
+            return mapHealthMainToOverviewRaw(healthData.main);
+          } catch (error) {
+            const message = error instanceof Error ? error.message : "falha ao carregar saude";
+            warnings.push(message);
+            return [];
+          }
         }
-
+        if (benefit.key === "dental") {
+          try {
+            dentalDetailedRecords = await readDentalDetailed(benefit);
+          } catch (error) {
+            const message =
+              error instanceof Error ? error.message : "falha ao carregar odontologico";
+            warnings.push(message);
+          }
+        }
+        if (benefit.key === "meal") {
+          try {
+            mealDetailedRecords = await readMealDetailed(benefit);
+          } catch (error) {
+            const message = error instanceof Error ? error.message : "falha ao carregar vale refeicao";
+            warnings.push(message);
+          }
+        }
         return await readBenefitSheet(benefit);
       } catch (error) {
         const message = error instanceof Error ? error.message : "falha ao carregar aba";
@@ -1397,146 +1450,110 @@ const getIndicatorsOverviewDataUncached = async (): Promise<IndicatorsOverviewDa
     }),
   );
 
-  return buildOverviewFromRecords(datasets.flat(), warnings);
+  return {
+    records: datasets.flat(),
+    healthRecords: healthMainRecords,
+    healthCopartRecords,
+    dentalRecords: dentalDetailedRecords,
+    mealRecords: mealDetailedRecords,
+    warnings,
+  };
 };
 
-export const getIndicatorsOverviewData = async (): Promise<IndicatorsOverviewData> => {
-  const cached = getCache<IndicatorsOverviewData>(INDICATORS_OVERVIEW_CACHE_KEY);
-  if (cached) {
-    return cached;
+const getIndicatorsSourceData = async (): Promise<IndicatorsSourceData> => {
+  const now = Date.now();
+  if (indicatorsSourceCache && indicatorsSourceCache.expiresAt > now) {
+    return indicatorsSourceCache.data;
   }
 
-  if (indicatorsOverviewInFlight) {
-    return indicatorsOverviewInFlight;
+  if (indicatorsSourceInFlight) {
+    return indicatorsSourceInFlight;
   }
 
-  indicatorsOverviewInFlight = getIndicatorsOverviewDataUncached()
+  indicatorsSourceInFlight = getIndicatorsSourceDataUncached()
     .then((data) => {
-      setCache(INDICATORS_OVERVIEW_CACHE_KEY, data, INDICATORS_CACHE_TTL_MS);
+      indicatorsSourceCache = {
+        data,
+        expiresAt: Date.now() + INDICATORS_CACHE_TTL_MS,
+      };
       return data;
     })
     .finally(() => {
-      indicatorsOverviewInFlight = null;
+      indicatorsSourceInFlight = null;
     });
 
-  return indicatorsOverviewInFlight;
+  return indicatorsSourceInFlight;
 };
 
-const getIndicatorDetailDataUncached = async (
-  benefitKey: BenefitKey,
-): Promise<IndicatorDetailResponse> => {
-  const benefit = BENEFITS.find((item) => item.key === benefitKey);
-  if (!benefit) {
-    throw new Error(`Beneficio invalido: ${benefitKey}`);
-  }
+export const getIndicatorsDashboardData = async (
+  scope?: Pick<IndicatorAccessScope, "isAdmin" | "allowedBrands">,
+): Promise<IndicatorsDashboardData> => {
+  const source = await getIndicatorsSourceData();
+  return buildDashboardFromSource(applyIndicatorScopeToSource(source, scope));
+};
 
-  const warnings: string[] = [];
-
-  try {
-    if (benefitKey === "health") {
-      const healthData = await readHealthDetailed(benefit);
-      return {
-        key: "health",
-        warnings,
-        healthRecords: healthData.main,
-        healthCopartRecords: healthData.copart,
-      };
-    }
-
-    if (benefitKey === "dental") {
-      return {
-        key: "dental",
-        warnings,
-        dentalRecords: await readDentalDetailed(benefit),
-      };
-    }
-
-    if (benefitKey === "meal") {
-      return {
-        key: "meal",
-        warnings,
-        mealRecords: await readMealDetailed(benefit),
-      };
-    }
-
-    return {
-      key: "transport",
-      warnings,
-      transportRecords: mapTransportDetailRecords(await readBenefitSheet(benefit)),
-    };
-  } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "falha ao carregar detalhamento";
-    warnings.push(message);
-
-    if (benefitKey === "health") {
-      return {
-        key: "health",
-        warnings,
-        healthRecords: [],
-        healthCopartRecords: [],
-      };
-    }
-
-    if (benefitKey === "dental") {
-      return {
-        key: "dental",
-        warnings,
-        dentalRecords: [],
-      };
-    }
-
-    if (benefitKey === "meal") {
-      return {
-        key: "meal",
-        warnings,
-        mealRecords: [],
-      };
-    }
-
-    return {
-      key: "transport",
-      warnings,
-      transportRecords: [],
-    };
-  }
+export const getIndicatorsOverviewData = async (
+  scope?: Pick<IndicatorAccessScope, "isAdmin" | "allowedBrands">,
+): Promise<IndicatorsOverviewData> => {
+  const source = await getIndicatorsSourceData();
+  return buildOverviewFromRecords(
+    applyIndicatorScopeToSource(source, scope).records,
+    source.warnings,
+  );
 };
 
 export function getIndicatorDetailData(
   benefitKey: "health",
+  scope?: Pick<IndicatorAccessScope, "isAdmin" | "allowedBrands">,
 ): Promise<IndicatorDetailByBenefit["health"]>;
 export function getIndicatorDetailData(
   benefitKey: "dental",
+  scope?: Pick<IndicatorAccessScope, "isAdmin" | "allowedBrands">,
 ): Promise<IndicatorDetailByBenefit["dental"]>;
 export function getIndicatorDetailData(
   benefitKey: "meal",
+  scope?: Pick<IndicatorAccessScope, "isAdmin" | "allowedBrands">,
 ): Promise<IndicatorDetailByBenefit["meal"]>;
 export function getIndicatorDetailData(
   benefitKey: "transport",
+  scope?: Pick<IndicatorAccessScope, "isAdmin" | "allowedBrands">,
 ): Promise<IndicatorDetailByBenefit["transport"]>;
 export async function getIndicatorDetailData(
   benefitKey: BenefitKey,
+  scope?: Pick<IndicatorAccessScope, "isAdmin" | "allowedBrands">,
 ): Promise<IndicatorDetailResponse> {
-  const cacheKey = indicatorsDetailCacheKey(benefitKey);
-  const cached = getCache<IndicatorDetailResponse>(cacheKey);
-  if (cached) {
-    return cached;
+  const source = applyIndicatorScopeToSource(await getIndicatorsSourceData(), scope);
+
+  if (benefitKey === "health") {
+    return {
+      key: "health",
+      warnings: source.warnings,
+      healthRecords: source.healthRecords,
+      healthCopartRecords: source.healthCopartRecords,
+    };
   }
 
-  const inFlight = indicatorsDetailInFlight.get(benefitKey);
-  if (inFlight) {
-    return inFlight;
+  if (benefitKey === "dental") {
+    return {
+      key: "dental",
+      warnings: source.warnings,
+      dentalRecords: source.dentalRecords,
+    };
   }
 
-  const request = getIndicatorDetailDataUncached(benefitKey)
-    .then((data) => {
-      setCache(cacheKey, data, INDICATORS_CACHE_TTL_MS);
-      return data;
-    })
-    .finally(() => {
-      indicatorsDetailInFlight.delete(benefitKey);
-    });
+  if (benefitKey === "meal") {
+    return {
+      key: "meal",
+      warnings: source.warnings,
+      mealRecords: source.mealRecords,
+    };
+  }
 
-  indicatorsDetailInFlight.set(benefitKey, request as Promise<IndicatorDetailResponse>);
-  return request;
+  return {
+    key: "transport",
+    warnings: source.warnings,
+    transportRecords: mapTransportDetailRecords(
+      source.records.filter((row) => row.benefit === "transport"),
+    ),
+  };
 };

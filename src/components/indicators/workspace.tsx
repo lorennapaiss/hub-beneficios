@@ -14,6 +14,8 @@ type BenefitKey = "health" | "dental" | "transport" | "meal";
 
 type IndicatorsWorkspaceProps = {
   dashboard: IndicatorsOverviewData;
+  allowedBrands: string[];
+  isAdmin: boolean;
 };
 
 type DetailResponseEnvelope<K extends BenefitKey = BenefitKey> = {
@@ -61,7 +63,11 @@ const variationClass = (value: number | null) => {
   return "text-slate-500";
 };
 
-export function IndicatorsWorkspace({ dashboard }: IndicatorsWorkspaceProps) {
+export function IndicatorsWorkspace({
+  dashboard,
+  allowedBrands,
+  isAdmin,
+}: IndicatorsWorkspaceProps) {
   const defaultTab = (dashboard.benefitDashboards[0]?.key ?? "health") as BenefitKey;
   const { request } = useApi();
   const [activeTab, setActiveTab] = useState<BenefitKey>(defaultTab);
@@ -128,6 +134,17 @@ export function IndicatorsWorkspace({ dashboard }: IndicatorsWorkspaceProps) {
       ) : null}
 
       <section className="grid gap-4 xl:grid-cols-12">
+        {!isAdmin ? (
+          <div className="indicator-kpi-card xl:col-span-12">
+            <p className="indicator-kpi-label">Escopo autorizado</p>
+            <p className="mt-1 text-sm font-medium text-slate-900">
+              {allowedBrands.length === 1
+                ? `Marca travada: ${allowedBrands[0]}`
+                : `Marcas autorizadas: ${allowedBrands.join(", ")}`}
+            </p>
+          </div>
+        ) : null}
+
         <div className="indicator-kpi-hero xl:col-span-6">
           <p className="indicator-kpi-label">Custo total geral</p>
           <p className="indicator-kpi-value">{formatCurrency(dashboard.totalCurrent)}</p>
