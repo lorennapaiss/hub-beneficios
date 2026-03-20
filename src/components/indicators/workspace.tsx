@@ -1,16 +1,46 @@
-﻿"use client";
+"use client";
 
-import { useMemo } from "react";
-import { HealthDashboard } from "@/components/indicators/health-dashboard";
-import { DentalDashboard } from "@/components/indicators/dental-dashboard";
-import { MealDashboard } from "@/components/indicators/meal-dashboard";
-import { VtDashboard } from "@/components/indicators/vt-dashboard";
+import dynamic from "next/dynamic";
+import { startTransition, useEffect, useMemo, useState } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { IndicatorsDashboardData } from "@/server/indicators/dashboard";
+import { useApi } from "@/lib/hooks/use-api";
+import type {
+  IndicatorDetailResponse,
+  IndicatorsOverviewData,
+} from "@/server/indicators/dashboard";
+
+type BenefitKey = "health" | "dental" | "transport" | "meal";
 
 type IndicatorsWorkspaceProps = {
-  dashboard: IndicatorsDashboardData;
+  dashboard: IndicatorsOverviewData;
 };
+
+type DetailResponseEnvelope<K extends BenefitKey = BenefitKey> = {
+  data: IndicatorDetailResponse<K>;
+  meta: {
+    benefit: K;
+    cache: string;
+    generatedAt: string;
+  };
+};
+
+const HealthDashboard = dynamic(
+  () => import("@/components/indicators/health-dashboard").then((mod) => mod.HealthDashboard),
+  { loading: () => <DashboardPanelSkeleton /> },
+);
+const DentalDashboard = dynamic(
+  () => import("@/components/indicators/dental-dashboard").then((mod) => mod.DentalDashboard),
+  { loading: () => <DashboardPanelSkeleton /> },
+);
+const MealDashboard = dynamic(
+  () => import("@/components/indicators/meal-dashboard").then((mod) => mod.MealDashboard),
+  { loading: () => <DashboardPanelSkeleton /> },
+);
+const VtDashboard = dynamic(
+  () => import("@/components/indicators/vt-dashboard").then((mod) => mod.VtDashboard),
+  { loading: () => <DashboardPanelSkeleton /> },
+);
 
 const currency = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -32,21 +62,65 @@ const variationClass = (value: number | null) => {
 };
 
 export function IndicatorsWorkspace({ dashboard }: IndicatorsWorkspaceProps) {
-  const defaultTab = dashboard.benefitDashboards[0]?.key ?? "health";
+  const defaultTab = (dashboard.benefitDashboards[0]?.key ?? "health") as BenefitKey;
+  const { request } = useApi();
+  const [activeTab, setActiveTab] = useState<BenefitKey>(defaultTab);
+  const [detailByBenefit, setDetailByBenefit] = useState<
+    Partial<Record<BenefitKey, IndicatorDetailResponse>>
+  >({});
+  const [loadingBenefit, setLoadingBenefit] = useState<BenefitKey | null>(defaultTab);
+  const [detailError, setDetailError] = useState<string | null>(null);
   const mode: "A" | "B" | "C" = "B";
 
-  const currentHealth = useMemo(
-    () => dashboard.benefitDashboards.find((item) => item.key === "health"),
-    [dashboard.benefitDashboards],
-  );
+  useEffect(() => {
+    if (detailByBenefit[activeTab]) return;
+
+    const controller = new AbortController();
+
+    request<DetailResponseEnvelope>(
+      `/api/indicators/${activeTab}`,
+      { signal: controller.signal },
+      {
+        cacheKey: `indicators:detail:${activeTab}`,
+        cacheTtlMs: 5 * 60 * 1000,
+      },
+    )
+      .then((response) => {
+        setDetailByBenefit((current) => ({
+          ...current,
+          [activeTab]: response.data,
+        }));
+        setDetailError(null);
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) return;
+        setDetailError(error instanceof Error ? error.message : "Falha ao carregar painel.");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setLoadingBenefit((current) => (current === activeTab ? null : current));
+        }
+      });
+
+    return () => controller.abort();
+  }, [activeTab, detailByBenefit, request]);
+
+  const activeDetail = detailByBenefit[activeTab];
+  const activeWarnings = useMemo(() => {
+    const warnings = new Set(dashboard.warnings);
+    for (const warning of activeDetail?.warnings ?? []) {
+      warnings.add(warning);
+    }
+    return Array.from(warnings);
+  }, [activeDetail?.warnings, dashboard.warnings]);
 
   return (
     <div className="indicator-shell indicator-layout-b space-y-6">
-      {dashboard.warnings.length > 0 ? (
+      {activeWarnings.length > 0 ? (
         <div className="indicator-alert">
           <p className="font-semibold">Avisos de integração</p>
           <ul className="mt-2 list-disc space-y-1 pl-4">
-            {dashboard.warnings.map((warning) => (
+            {activeWarnings.map((warning) => (
               <li key={warning}>{warning}</li>
             ))}
           </ul>
@@ -61,7 +135,8 @@ export function IndicatorsWorkspace({ dashboard }: IndicatorsWorkspaceProps) {
             {formatPercent(dashboard.totalVariationPercent)}
           </div>
           <p className="mt-2 text-xs text-slate-500">
-            Competência {dashboard.competenceCurrent} vs {dashboard.competencePrevious ?? "sem base anterior"}
+            Competência {dashboard.competenceCurrent} vs{" "}
+            {dashboard.competencePrevious ?? "sem base anterior"}
           </p>
         </div>
 
@@ -72,15 +147,21 @@ export function IndicatorsWorkspace({ dashboard }: IndicatorsWorkspaceProps) {
 
         <div className="indicator-kpi-card xl:col-span-3">
           <p className="indicator-kpi-label">Mês anterior</p>
-          <p className="text-2xl font-semibold text-slate-900">{formatCurrency(dashboard.totalPrevious)}</p>
+          <p className="text-2xl font-semibold text-slate-900">
+            {formatCurrency(dashboard.totalPrevious)}
+          </p>
         </div>
 
         <div className="indicator-kpi-card xl:col-span-12">
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             {dashboard.benefitSummaries.map((item) => (
               <div key={item.key} className="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">{item.label}</p>
-                <p className="mt-1 text-lg font-semibold text-slate-900">{formatCurrency(item.totalCurrent)}</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
+                  {item.label}
+                </p>
+                <p className="mt-1 text-lg font-semibold text-slate-900">
+                  {formatCurrency(item.totalCurrent)}
+                </p>
                 <p className={`text-xs font-semibold ${variationClass(item.variationPercent)}`}>
                   {formatPercent(item.variationPercent)}
                 </p>
@@ -90,7 +171,18 @@ export function IndicatorsWorkspace({ dashboard }: IndicatorsWorkspaceProps) {
         </div>
       </section>
 
-      <Tabs defaultValue={defaultTab} className="space-y-4">
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => {
+          startTransition(() => {
+            const nextValue = value as BenefitKey;
+            setActiveTab(nextValue);
+            setLoadingBenefit(detailByBenefit[nextValue] ? null : nextValue);
+            setDetailError(null);
+          });
+        }}
+        className="space-y-4"
+      >
         <TabsList variant="line" className="w-full justify-start overflow-x-auto border-b border-slate-200 pb-0.5">
           {dashboard.benefitDashboards.map((tab) => (
             <TabsTrigger key={tab.key} value={tab.key} className="px-4">
@@ -99,60 +191,127 @@ export function IndicatorsWorkspace({ dashboard }: IndicatorsWorkspaceProps) {
           ))}
         </TabsList>
 
-        {dashboard.benefitDashboards.map((tab) => {
-          if (tab.key === "health") {
-            return (
-              <TabsContent key={tab.key} value={tab.key} className="space-y-4">
-                <HealthDashboard
-                  records={dashboard.healthRecords}
-                  copartRecords={dashboard.healthCopartRecords}
-                  mode={mode}
-                />
-              </TabsContent>
-            );
-          }
-
-          if (tab.key === "transport") {
-            return (
-              <TabsContent key={tab.key} value={tab.key} className="space-y-4">
-                <VtDashboard records={dashboard.transportRecords} mode={mode} />
-              </TabsContent>
-            );
-          }
-
-          if (tab.key === "dental") {
-            return (
-              <TabsContent key={tab.key} value={tab.key} className="space-y-4">
-                <DentalDashboard records={dashboard.dentalRecords} mode={mode} />
-              </TabsContent>
-            );
-          }
-
-          if (tab.key === "meal") {
-            return (
-              <TabsContent key={tab.key} value={tab.key} className="space-y-4">
-                <MealDashboard records={dashboard.mealRecords} mode={mode} />
-              </TabsContent>
-            );
-          }
-
-          return (
-            <TabsContent key={tab.key} value={tab.key} className="space-y-4">
-              <section className="indicator-kpi-card">
-                <p className="indicator-kpi-label">Resumo</p>
-                <p className="text-lg text-slate-700">
-                  Esse módulo ainda está no layout legado. Mantive todas as métricas e naveguei primeiro por Saúde e VT no novo visual.
-                </p>
-                {tab.key === "health" && currentHealth ? (
-                  <p className="mt-2 text-sm text-slate-500">
-                    Custo médio por vida: {formatCurrency(currentHealth.averageCostPerPerson ?? 0)}
-                  </p>
-                ) : null}
-              </section>
-            </TabsContent>
-          );
-        })}
+        {dashboard.benefitDashboards.map((tab) => (
+          <TabsContent key={tab.key} value={tab.key} className="space-y-4">
+            {activeTab === tab.key ? (
+              <ActiveDashboardPanel
+                benefit={tab.key as BenefitKey}
+                detail={activeDetail}
+                loading={loadingBenefit === tab.key && !activeDetail}
+                error={detailError}
+                mode={mode}
+              />
+            ) : null}
+          </TabsContent>
+        ))}
       </Tabs>
     </div>
+  );
+}
+
+function ActiveDashboardPanel({
+  benefit,
+  detail,
+  loading,
+  error,
+  mode,
+}: {
+  benefit: BenefitKey;
+  detail?: IndicatorDetailResponse;
+  loading: boolean;
+  error: string | null;
+  mode: "A" | "B" | "C";
+}) {
+  if (loading) {
+    return <DashboardPanelSkeleton />;
+  }
+
+  if (error) {
+    return (
+      <StatusCard
+        title="Falha ao carregar detalhamento"
+        description={error}
+      />
+    );
+  }
+
+  if (!detail) {
+    return (
+      <StatusCard
+        title="Detalhamento indisponível"
+        description="Nenhum dado detalhado foi retornado para este benefício."
+      />
+    );
+  }
+
+  if (benefit === "health" && detail.key === "health") {
+    return (
+      <HealthDashboard
+        records={detail.healthRecords}
+        copartRecords={detail.healthCopartRecords}
+        mode={mode}
+      />
+    );
+  }
+
+  if (benefit === "transport" && detail.key === "transport") {
+    return <VtDashboard records={detail.transportRecords} mode={mode} />;
+  }
+
+  if (benefit === "dental" && detail.key === "dental") {
+    return <DentalDashboard records={detail.dentalRecords} mode={mode} />;
+  }
+
+  if (benefit === "meal" && detail.key === "meal") {
+    return <MealDashboard records={detail.mealRecords} mode={mode} />;
+  }
+
+  return (
+    <StatusCard
+      title="Painel incompatível"
+      description="O payload retornado não corresponde ao benefício selecionado."
+    />
+  );
+}
+
+function DashboardPanelSkeleton() {
+  return (
+    <div className="grid gap-4">
+      <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+        {Array.from({ length: 6 }).map((_, index) => (
+          <div key={index} className="h-10 animate-pulse rounded-xl bg-slate-200/70" />
+        ))}
+      </div>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div key={index} className="h-32 animate-pulse rounded-2xl bg-slate-200/70" />
+        ))}
+      </div>
+      <div className="grid gap-4 xl:grid-cols-2">
+        {Array.from({ length: 2 }).map((_, index) => (
+          <div key={index} className="h-72 animate-pulse rounded-2xl bg-slate-200/70" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function StatusCard({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <Card className="border-dashed shadow-none">
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="h-20 rounded-xl border border-dashed border-slate-200 bg-slate-50/70" />
+      </CardContent>
+    </Card>
   );
 }

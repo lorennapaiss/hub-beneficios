@@ -7,7 +7,15 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
-export function Topbar() {
+type TopbarProps = {
+  mobileNavOpen: boolean;
+  onMobileNavOpenChange: (open: boolean) => void;
+};
+
+export function Topbar({
+  mobileNavOpen,
+  onMobileNavOpenChange,
+}: TopbarProps) {
   const { data: session } = useSession();
   const user = session?.user;
   const userLabel = user?.name ?? user?.email ?? "Usuário";
@@ -23,7 +31,7 @@ export function Topbar() {
   return (
     <header className="relative sticky top-0 z-40 border-b border-white/40 bg-white/70 backdrop-blur after:absolute after:inset-x-0 after:-bottom-px after:h-px after:bg-gradient-to-r after:from-sky-500 after:via-orange-400 after:to-transparent">
       <div className="flex h-16 items-center gap-3 px-4 sm:px-6 lg:px-8">
-        <Sheet>
+        <Sheet open={mobileNavOpen} onOpenChange={onMobileNavOpenChange}>
           <SheetTrigger asChild>
             <Button
               variant="outline"
@@ -35,7 +43,10 @@ export function Topbar() {
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="p-0">
-            <SidebarNav variant="sheet" />
+            <SidebarNav
+              variant="sheet"
+              onNavigate={() => onMobileNavOpenChange(false)}
+            />
           </SheetContent>
         </Sheet>
 

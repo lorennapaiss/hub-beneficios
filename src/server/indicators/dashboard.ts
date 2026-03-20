@@ -1,6 +1,7 @@
 import "server-only";
 import { google } from "googleapis";
 import { env } from "@/lib/env";
+import { getCache, setCache } from "@/server/cache";
 import { getGoogleAuth } from "@/server/payments/google";
 
 type BenefitKey = "health" | "dental" | "transport" | "meal";
@@ -156,6 +157,38 @@ export type IndicatorsDashboardData = {
   mealRecords: MealRecord[];
   warnings: string[];
 };
+
+export type IndicatorsOverviewData = Omit<
+  IndicatorsDashboardData,
+  "transportRecords" | "healthRecords" | "healthCopartRecords" | "dentalRecords" | "mealRecords"
+>;
+
+export type IndicatorDetailByBenefit = {
+  health: {
+    key: "health";
+    warnings: string[];
+    healthRecords: HealthRecord[];
+    healthCopartRecords: HealthCopartRecord[];
+  };
+  dental: {
+    key: "dental";
+    warnings: string[];
+    dentalRecords: DentalRecord[];
+  };
+  transport: {
+    key: "transport";
+    warnings: string[];
+    transportRecords: TransportRecord[];
+  };
+  meal: {
+    key: "meal";
+    warnings: string[];
+    mealRecords: MealRecord[];
+  };
+};
+
+export type IndicatorDetailResponse<K extends BenefitKey = BenefitKey> =
+  IndicatorDetailByBenefit[K];
 
 const BENEFITS: BenefitConfig[] = [
   {
@@ -334,14 +367,6 @@ const getHeaderIndex = (headers: string[], aliases: string[]) => {
   }
   return -1;
 };
-
-const hasHeader = (headers: string[], alias: string) => headers.includes(normalizeHeader(alias));
-
-const isDiscountLayout = (sheetName: string, headers: string[]) =>
-  /descontos?/i.test(sheetName) ||
-  (hasHeader(headers, "provdescbaseinc") &&
-    hasHeader(headers, "mescomp") &&
-    hasHeader(headers, "valor"));
 
 const getCell = (row: string[], index: number) => (index >= 0 ? row[index] ?? "" : "");
 
@@ -1198,4 +1223,308 @@ export const getIndicatorsDashboardData = async (): Promise<IndicatorsDashboardD
     });
 
   return indicatorsInFlight;
+};
+
+const INDICATORS_OVERVIEW_CACHE_KEY = "indicators:overview";
+const indicatorsDetailCacheKey = (benefit: BenefitKey) => `indicators:detail:${benefit}`;
+let indicatorsOverviewInFlight: Promise<IndicatorsOverviewData> | null = null;
+const indicatorsDetailInFlight = new Map<BenefitKey, Promise<IndicatorDetailResponse>>();
+
+const mapHealthMainToOverviewRaw = (rows: HealthRecord[]): RawIndicator[] =>
+  rows.map((row) => ({
+    benefit: "health",
+    competence: row.competence,
+    year: row.year,
+    month: row.month,
+    amount: row.premiumAmount,
+    discountAmount: row.discountAmount,
+    headcount: 1,
+    costCenter: row.brand || "Nao informado",
+    provider: "Plano de Saude",
+    brand: row.brand || "Nao informado",
+    role: row.role || "Nao informado",
+    employeeId: row.employeeId,
+    employeeName: row.employeeName,
+    hasEconomy: false,
+    economyAmount: 0,
+  }));
+
+const mapTransportDetailRecords = (rows: RawIndicator[]): TransportRecord[] =>
+  rows
+    .filter((row) => row.benefit === "transport")
+    .map((row) => ({
+      competence: row.competence,
+      year: row.year,
+      month: row.month,
+      amount: row.amount,
+      economyAmount: row.economyAmount,
+      hasEconomy: row.hasEconomy,
+      employeeId: row.employeeId,
+      employeeName: row.employeeName,
+      brand: row.brand,
+      role: row.role,
+    }));
+
+const buildOverviewFromRecords = (
+  records: RawIndicator[],
+  warnings: string[],
+): IndicatorsOverviewData => {
+  const competences = Array.from(new Set(records.map((row) => row.competence))).sort();
+  const nowCompetence = monthNow();
+  const competenceCurrent = competences.includes(nowCompetence)
+    ? nowCompetence
+    : (competences.at(-1) ?? nowCompetence);
+  const calculatedPrevious = previousCompetenceOf(competenceCurrent);
+  const competencePrevious =
+    calculatedPrevious && competences.includes(calculatedPrevious)
+      ? calculatedPrevious
+      : competences.length > 1
+        ? (competences.at(-2) ?? null)
+        : null;
+
+  const byCompetence = (competence: string | null) =>
+    competence ? records.filter((row) => row.competence === competence) : [];
+
+  const rowsCurrent = byCompetence(competenceCurrent);
+  const rowsPrevious = byCompetence(competencePrevious);
+  const totalCurrent = sum(rowsCurrent.map((row) => row.amount));
+  const totalPrevious = sum(rowsPrevious.map((row) => row.amount));
+
+  const benefitSummaries = BENEFITS.map((benefit) => {
+    const currentRows = rowsCurrent.filter((row) => row.benefit === benefit.key);
+    const previousRows = rowsPrevious.filter((row) => row.benefit === benefit.key);
+    const currentTotal = sum(currentRows.map((row) => row.amount));
+    const previousTotal = sum(previousRows.map((row) => row.amount));
+    const headcountCurrent = sum(currentRows.map((row) => row.headcount));
+
+    return {
+      key: benefit.key,
+      label: benefit.label,
+      totalCurrent: currentTotal,
+      totalPrevious: previousTotal,
+      variationPercent: variationPercent(currentTotal, previousTotal),
+      headcountCurrent,
+      averageCostPerPerson: headcountCurrent > 0 ? currentTotal / headcountCurrent : null,
+    };
+  });
+
+  const trendCompetences = competences.slice(-6);
+  const trend = trendCompetences.map((competence) => {
+    const rows = records.filter((row) => row.competence === competence);
+    const byBenefit: Record<BenefitKey, number> = {
+      health: 0,
+      dental: 0,
+      transport: 0,
+      meal: 0,
+    };
+
+    for (const row of rows) {
+      byBenefit[row.benefit] += row.amount;
+    }
+
+    return {
+      competence,
+      byBenefit,
+      total: sum(Object.values(byBenefit)),
+    };
+  });
+
+  const benefitDashboards: BenefitTabDashboard[] = BENEFITS.map((benefit) => {
+    const recordsByBenefit = records.filter((row) => row.benefit === benefit.key);
+    const currentRows = recordsByBenefit.filter((row) => row.competence === competenceCurrent);
+    const previousRows = recordsByBenefit.filter(
+      (row) => row.competence === competencePrevious,
+    );
+
+    const currentTotal = sum(currentRows.map((row) => row.amount));
+    const previousTotal = sum(previousRows.map((row) => row.amount));
+    const headcountCurrent = sum(currentRows.map((row) => row.headcount));
+
+    return {
+      key: benefit.key,
+      label: benefit.label,
+      competenceCurrent,
+      competencePrevious,
+      totalCurrent: currentTotal,
+      totalPrevious: previousTotal,
+      variationPercent: variationPercent(currentTotal, previousTotal),
+      headcountCurrent,
+      averageCostPerPerson: headcountCurrent > 0 ? currentTotal / headcountCurrent : null,
+      trend: trendCompetences.map((competence) => ({
+        competence,
+        total: sum(
+          recordsByBenefit
+            .filter((row) => row.competence === competence)
+            .map((row) => row.amount),
+        ),
+      })),
+      topCostCenters: buildRanking(currentRows, "costCenter"),
+      topProviders: buildRanking(currentRows, "provider"),
+    };
+  });
+
+  return {
+    competenceCurrent,
+    competencePrevious,
+    totalCurrent,
+    totalPrevious,
+    totalVariationPercent: variationPercent(totalCurrent, totalPrevious),
+    benefitSummaries,
+    trend,
+    topCostCenters: buildRanking(rowsCurrent, "costCenter"),
+    benefitDashboards,
+    warnings,
+  };
+};
+
+const getIndicatorsOverviewDataUncached = async (): Promise<IndicatorsOverviewData> => {
+  const warnings: string[] = [];
+
+  const datasets = await Promise.all(
+    BENEFITS.map(async (benefit) => {
+      try {
+        if (benefit.key === "health") {
+          const healthData = await readHealthDetailed(benefit);
+          return mapHealthMainToOverviewRaw(healthData.main);
+        }
+
+        return await readBenefitSheet(benefit);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "falha ao carregar aba";
+        warnings.push(`Nao foi possivel ler ${benefit.sheetName}: ${message}`);
+        return [];
+      }
+    }),
+  );
+
+  return buildOverviewFromRecords(datasets.flat(), warnings);
+};
+
+export const getIndicatorsOverviewData = async (): Promise<IndicatorsOverviewData> => {
+  const cached = getCache<IndicatorsOverviewData>(INDICATORS_OVERVIEW_CACHE_KEY);
+  if (cached) {
+    return cached;
+  }
+
+  if (indicatorsOverviewInFlight) {
+    return indicatorsOverviewInFlight;
+  }
+
+  indicatorsOverviewInFlight = getIndicatorsOverviewDataUncached()
+    .then((data) => {
+      setCache(INDICATORS_OVERVIEW_CACHE_KEY, data, INDICATORS_CACHE_TTL_MS);
+      return data;
+    })
+    .finally(() => {
+      indicatorsOverviewInFlight = null;
+    });
+
+  return indicatorsOverviewInFlight;
+};
+
+const getIndicatorDetailDataUncached = async <K extends BenefitKey>(
+  benefitKey: K,
+): Promise<IndicatorDetailResponse<K>> => {
+  const benefit = BENEFITS.find((item) => item.key === benefitKey);
+  if (!benefit) {
+    throw new Error(`Beneficio invalido: ${benefitKey}`);
+  }
+
+  const warnings: string[] = [];
+
+  try {
+    if (benefitKey === "health") {
+      const healthData = await readHealthDetailed(benefit);
+      return {
+        key: "health",
+        warnings,
+        healthRecords: healthData.main,
+        healthCopartRecords: healthData.copart,
+      } as IndicatorDetailResponse<K>;
+    }
+
+    if (benefitKey === "dental") {
+      return {
+        key: "dental",
+        warnings,
+        dentalRecords: await readDentalDetailed(benefit),
+      } as IndicatorDetailResponse<K>;
+    }
+
+    if (benefitKey === "meal") {
+      return {
+        key: "meal",
+        warnings,
+        mealRecords: await readMealDetailed(benefit),
+      } as IndicatorDetailResponse<K>;
+    }
+
+    return {
+      key: "transport",
+      warnings,
+      transportRecords: mapTransportDetailRecords(await readBenefitSheet(benefit)),
+    } as IndicatorDetailResponse<K>;
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "falha ao carregar detalhamento";
+    warnings.push(message);
+
+    if (benefitKey === "health") {
+      return {
+        key: "health",
+        warnings,
+        healthRecords: [],
+        healthCopartRecords: [],
+      } as IndicatorDetailResponse<K>;
+    }
+
+    if (benefitKey === "dental") {
+      return {
+        key: "dental",
+        warnings,
+        dentalRecords: [],
+      } as IndicatorDetailResponse<K>;
+    }
+
+    if (benefitKey === "meal") {
+      return {
+        key: "meal",
+        warnings,
+        mealRecords: [],
+      } as IndicatorDetailResponse<K>;
+    }
+
+    return {
+      key: "transport",
+      warnings,
+      transportRecords: [],
+    } as IndicatorDetailResponse<K>;
+  }
+};
+
+export const getIndicatorDetailData = async <K extends BenefitKey>(
+  benefitKey: K,
+): Promise<IndicatorDetailResponse<K>> => {
+  const cacheKey = indicatorsDetailCacheKey(benefitKey);
+  const cached = getCache<IndicatorDetailResponse<K>>(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  const inFlight = indicatorsDetailInFlight.get(benefitKey);
+  if (inFlight) {
+    return inFlight as Promise<IndicatorDetailResponse<K>>;
+  }
+
+  const request = getIndicatorDetailDataUncached(benefitKey)
+    .then((data) => {
+      setCache(cacheKey, data, INDICATORS_CACHE_TTL_MS);
+      return data;
+    })
+    .finally(() => {
+      indicatorsDetailInFlight.delete(benefitKey);
+    });
+
+  indicatorsDetailInFlight.set(benefitKey, request as Promise<IndicatorDetailResponse>);
+  return request;
 };
