@@ -1422,9 +1422,9 @@ export const getIndicatorsOverviewData = async (): Promise<IndicatorsOverviewDat
   return indicatorsOverviewInFlight;
 };
 
-const getIndicatorDetailDataUncached = async <K extends BenefitKey>(
-  benefitKey: K,
-): Promise<IndicatorDetailResponse<K>> => {
+const getIndicatorDetailDataUncached = async (
+  benefitKey: BenefitKey,
+): Promise<IndicatorDetailResponse> => {
   const benefit = BENEFITS.find((item) => item.key === benefitKey);
   if (!benefit) {
     throw new Error(`Beneficio invalido: ${benefitKey}`);
@@ -1440,7 +1440,7 @@ const getIndicatorDetailDataUncached = async <K extends BenefitKey>(
         warnings,
         healthRecords: healthData.main,
         healthCopartRecords: healthData.copart,
-      } as IndicatorDetailResponse<K>;
+      };
     }
 
     if (benefitKey === "dental") {
@@ -1448,7 +1448,7 @@ const getIndicatorDetailDataUncached = async <K extends BenefitKey>(
         key: "dental",
         warnings,
         dentalRecords: await readDentalDetailed(benefit),
-      } as IndicatorDetailResponse<K>;
+      };
     }
 
     if (benefitKey === "meal") {
@@ -1456,14 +1456,14 @@ const getIndicatorDetailDataUncached = async <K extends BenefitKey>(
         key: "meal",
         warnings,
         mealRecords: await readMealDetailed(benefit),
-      } as IndicatorDetailResponse<K>;
+      };
     }
 
     return {
       key: "transport",
       warnings,
       transportRecords: mapTransportDetailRecords(await readBenefitSheet(benefit)),
-    } as IndicatorDetailResponse<K>;
+    };
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "falha ao carregar detalhamento";
@@ -1475,7 +1475,7 @@ const getIndicatorDetailDataUncached = async <K extends BenefitKey>(
         warnings,
         healthRecords: [],
         healthCopartRecords: [],
-      } as IndicatorDetailResponse<K>;
+      };
     }
 
     if (benefitKey === "dental") {
@@ -1483,7 +1483,7 @@ const getIndicatorDetailDataUncached = async <K extends BenefitKey>(
         key: "dental",
         warnings,
         dentalRecords: [],
-      } as IndicatorDetailResponse<K>;
+      };
     }
 
     if (benefitKey === "meal") {
@@ -1491,29 +1491,41 @@ const getIndicatorDetailDataUncached = async <K extends BenefitKey>(
         key: "meal",
         warnings,
         mealRecords: [],
-      } as IndicatorDetailResponse<K>;
+      };
     }
 
     return {
       key: "transport",
       warnings,
       transportRecords: [],
-    } as IndicatorDetailResponse<K>;
+    };
   }
 };
 
-export const getIndicatorDetailData = async <K extends BenefitKey>(
-  benefitKey: K,
-): Promise<IndicatorDetailResponse<K>> => {
+export function getIndicatorDetailData(
+  benefitKey: "health",
+): Promise<IndicatorDetailByBenefit["health"]>;
+export function getIndicatorDetailData(
+  benefitKey: "dental",
+): Promise<IndicatorDetailByBenefit["dental"]>;
+export function getIndicatorDetailData(
+  benefitKey: "meal",
+): Promise<IndicatorDetailByBenefit["meal"]>;
+export function getIndicatorDetailData(
+  benefitKey: "transport",
+): Promise<IndicatorDetailByBenefit["transport"]>;
+export async function getIndicatorDetailData(
+  benefitKey: BenefitKey,
+): Promise<IndicatorDetailResponse> {
   const cacheKey = indicatorsDetailCacheKey(benefitKey);
-  const cached = getCache<IndicatorDetailResponse<K>>(cacheKey);
+  const cached = getCache<IndicatorDetailResponse>(cacheKey);
   if (cached) {
     return cached;
   }
 
   const inFlight = indicatorsDetailInFlight.get(benefitKey);
   if (inFlight) {
-    return inFlight as Promise<IndicatorDetailResponse<K>>;
+    return inFlight;
   }
 
   const request = getIndicatorDetailDataUncached(benefitKey)

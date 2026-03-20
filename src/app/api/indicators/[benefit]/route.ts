@@ -21,7 +21,14 @@ export async function GET(
       return NextResponse.json({ error: "Beneficio invalido." }, { status: 400 });
     }
 
-    const data = await getIndicatorDetailData(benefit);
+    const data =
+      benefit === "health"
+        ? await getIndicatorDetailData("health")
+        : benefit === "dental"
+          ? await getIndicatorDetailData("dental")
+          : benefit === "meal"
+            ? await getIndicatorDetailData("meal")
+            : await getIndicatorDetailData("transport");
 
     return NextResponse.json({
       data,
