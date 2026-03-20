@@ -71,45 +71,48 @@ export function SidebarNav({
     >
       <div
         className={cn(
-          "flex items-center gap-3 px-4 py-5 transition-all",
-          isCollapsed && "justify-center px-2",
+          "flex gap-3 px-4 py-5 transition-all",
+          isCollapsed ? "flex-col items-center px-2" : "items-center",
         )}
       >
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[linear-gradient(135deg,theme(colors.sky.500),theme(colors.orange.400))] text-white shadow-sm">
-          HB
-        </div>
+        {isDesktopSidebar && onToggleCollapsed ? (
+          <button
+            type="button"
+            onClick={onToggleCollapsed}
+            className={cn(
+              "inline-flex items-center justify-center rounded-lg border border-white/50 bg-white/70 text-slate-600 transition hover:border-sky-300/70 hover:text-sky-700",
+              isCollapsed ? "size-8" : "size-9",
+            )}
+            aria-label={isCollapsed ? "Expandir sidebar" : "Recolher sidebar"}
+            title={isCollapsed ? "Expandir sidebar" : "Recolher sidebar"}
+          >
+            {isCollapsed ? (
+              <PanelLeftOpen className="size-4" />
+            ) : (
+              <PanelLeftClose className="size-4" />
+            )}
+          </button>
+        ) : null}
 
-        {!isCollapsed ? (
-          <>
+        <div
+          className={cn(
+            "flex shrink-0 items-center",
+            isCollapsed ? "justify-center" : "min-w-0 flex-1 gap-3",
+          )}
+        >
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[linear-gradient(135deg,theme(colors.sky.500),theme(colors.orange.400))] text-white shadow-sm">
+            HB
+          </div>
+
+          {!isCollapsed ? (
             <div className="min-w-0 flex-1 leading-tight">
               <div className="truncate text-sm font-semibold">Hub Benefícios</div>
               <div className="truncate text-xs text-muted-foreground">
                 Portal interno
               </div>
             </div>
-            {isDesktopSidebar && onToggleCollapsed ? (
-              <button
-                type="button"
-                onClick={onToggleCollapsed}
-                className="inline-flex size-9 items-center justify-center rounded-lg border border-white/50 bg-white/70 text-slate-600 transition hover:border-sky-300/70 hover:text-sky-700"
-                aria-label="Recolher sidebar"
-                title="Recolher sidebar"
-              >
-                <PanelLeftClose className="size-4" />
-              </button>
-            ) : null}
-          </>
-        ) : isDesktopSidebar && onToggleCollapsed ? (
-          <button
-            type="button"
-            onClick={onToggleCollapsed}
-            className="absolute right-2 top-5 inline-flex size-8 items-center justify-center rounded-lg border border-white/50 bg-white/80 text-slate-600 transition hover:border-sky-300/70 hover:text-sky-700"
-            aria-label="Expandir sidebar"
-            title="Expandir sidebar"
-          >
-            <PanelLeftOpen className="size-4" />
-          </button>
-        ) : null}
+          ) : null}
+        </div>
       </div>
 
       <Separator />
