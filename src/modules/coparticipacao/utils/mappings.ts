@@ -5,7 +5,14 @@ import type {
   ProcessingStatus,
 } from "@/modules/coparticipacao/types/copay.types";
 
-export const DEFAULT_ACTIVE_TOKENS = ["ATIVO", "ATIVA", "ACTIVE"];
+export const DEFAULT_ACTIVE_TOKENS = [
+  "ATIVO",
+  "ATIVA",
+  "ACTIVE",
+  "FERIAS",
+  "AF PREVIDENCIA",
+  "LICENCA MATER",
+];
 export const DEFAULT_AUTONOMOUS_TOKENS = ["AUTONOMO", "AUTONOMA", "RPA", "PJ"];
 export const MINIMUM_ELIGIBLE_SALARY = 5;
 

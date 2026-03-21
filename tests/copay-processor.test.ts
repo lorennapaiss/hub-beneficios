@@ -141,6 +141,37 @@ describe("copay processor", () => {
     expect(result.rows[0]?.motivo).toMatch(/Salario R\$\s*5,00/);
   });
 
+  it("treats ferias, af previdencia and licenca mater as eligible statuses", () => {
+    const eligibleStatuses = ["FÉRIAS", "AF.PREVIDÊNCIA", "LICENÇA MATER"];
+
+    eligibleStatuses.forEach((status, index) => {
+      const result = processCopayExecution(
+        [
+          {
+            CHAPA: `40${index + 1}`,
+            NOME: `Pessoa ${index + 1}`,
+            SITUACAO: status,
+            TIPO_FUNCIONARIO: "CLT",
+            CARGO: "Analista",
+            SALARIO: "2500,00",
+          },
+        ],
+        [
+          {
+            NOME_TITULAR: `Pessoa ${index + 1}`,
+            NOME_BENEFICIARIO: `Pessoa ${index + 1}`,
+            VALOR_COPAY: "10,00",
+            SINAL: "+",
+            MES_REFERENCIA: "02/2026",
+          },
+        ],
+        config,
+      );
+
+      expect(result.rows[0]?.status).toBe("OK");
+    });
+  });
+
   it("builds txt and inconsistencies export", () => {
     const rows: CopayRow[] = [
       {
