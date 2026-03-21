@@ -71,6 +71,42 @@ const buildCandidate = (
   motivos_inelegibilidade: collaborator.motivos_inelegibilidade,
 });
 
+const formatSalaryValue = (value: number) =>
+  new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(value);
+
+const buildIneligibilityReasons = (
+  isAtivo: boolean,
+  situacaoRaw: string,
+  isAutonomo: boolean,
+  tipoRaw: string,
+  salario: number,
+) => {
+  const reasons: string[] = [];
+
+  if (!isAtivo) {
+    reasons.push(
+      `Situacao "${situacaoRaw || "nao informada"}" fora dos status elegiveis.`,
+    );
+  }
+
+  if (isAutonomo) {
+    reasons.push(
+      `Vinculo "${tipoRaw || "nao informado"}" classificado como autonomo/PJ/RPA.`,
+    );
+  }
+
+  if (salario <= MINIMUM_ELIGIBLE_SALARY) {
+    reasons.push(
+      `Salario ${formatSalaryValue(salario)} menor ou igual a ${formatSalaryValue(MINIMUM_ELIGIBLE_SALARY)}.`,
+    );
+  }
+
+  return reasons;
+};
+
 export const parseCollaborators = (rows: RawSheetRow[]) => {
   const warnings: string[] = [];
   const normalizedRows = normalizeSheetRows(rows);
@@ -96,15 +132,15 @@ export const parseCollaborators = (rows: RawSheetRow[]) => {
 
       const situacaoNorm = normalizeText(situacaoRaw);
       const tipoNorm = normalizeText(tipoRaw);
-      const motivos: string[] = [];
       const isAtivo = hasToken(situacaoNorm, DEFAULT_ACTIVE_TOKENS);
       const isAutonomo = hasToken(tipoNorm, DEFAULT_AUTONOMOUS_TOKENS);
-
-      if (!isAtivo) motivos.push("Colaborador fora dos status elegiveis.");
-      if (isAutonomo) motivos.push("Vinculo autonomo/PJ/RPA.");
-      if (salario <= MINIMUM_ELIGIBLE_SALARY) {
-        motivos.push("Salario menor ou igual a R$ 5,00.");
-      }
+      const motivos = buildIneligibilityReasons(
+        isAtivo,
+        situacaoRaw,
+        isAutonomo,
+        tipoRaw,
+        salario,
+      );
 
       return {
         chapa,

@@ -108,7 +108,37 @@ describe("copay processor", () => {
     );
 
     expect(result.rows[0]?.status).toBe("INELEGIVEL");
+    expect(result.rows[0]?.motivo).toContain('Vinculo "PJ"');
     expect(result.summary.inelegiveis).toBe(1);
+  });
+
+  it("explains ineligibility reasons with concrete field values", () => {
+    const result = processCopayExecution(
+      [
+        {
+          CHAPA: "3001",
+          NOME: "Ana Souza",
+          SITUACAO: "Afastado",
+          TIPO_FUNCIONARIO: "CLT",
+          CARGO: "Analista",
+          SALARIO: "5,00",
+        },
+      ],
+      [
+        {
+          NOME_TITULAR: "Ana Souza",
+          NOME_BENEFICIARIO: "Ana Souza",
+          VALOR_COPAY: "10,00",
+          SINAL: "+",
+          MES_REFERENCIA: "02/2026",
+        },
+      ],
+      config,
+    );
+
+    expect(result.rows[0]?.status).toBe("INELEGIVEL");
+    expect(result.rows[0]?.motivo).toContain('Situacao "Afastado"');
+    expect(result.rows[0]?.motivo).toMatch(/Salario R\$\s*5,00/);
   });
 
   it("builds txt and inconsistencies export", () => {
