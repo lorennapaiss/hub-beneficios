@@ -1,0 +1,9 @@
+process.env.GOOGLE_CLIENT_ID ??= "test-google-client-id";
+process.env.GOOGLE_CLIENT_SECRET ??= "test-google-client-secret";
+process.env.NEXTAUTH_SECRET ??= "test-nextauth-secret";
+process.env.ADMIN_EMAILS ??= "admin@example.com";
+process.env.ALLOWED_EMAILS ??= "admin@example.com,user@example.com";
+process.env.SHEETS_SPREADSHEET_ID ??= "sheet-id";
+process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL ??= "service@example.com";
+process.env.GOOGLE_PRIVATE_KEY ??= "-----BEGIN PRIVATE KEY-----\\nTEST\\n-----END PRIVATE KEY-----";
+process.env.DRIVE_FOLDER_ID ??= "drive-folder";

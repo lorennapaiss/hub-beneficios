@@ -1,6 +1,7 @@
 ﻿import type { LucideIcon } from "lucide-react";
 import {
   Briefcase,
+  Coins,
   CreditCard,
   FileText,
   LayoutDashboard,
@@ -54,6 +55,11 @@ export const navItems: NavItem[] = [
     title: "Pagamentos",
     href: "/beneficios/pagamentos",
     icon: Wallet,
+  },
+  {
+    title: "Coparticipacao",
+    href: "/beneficios/coparticipacao",
+    icon: Coins,
   },
   {
     title: "Controle de PJs",
