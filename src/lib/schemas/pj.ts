@@ -1,23 +1,10 @@
 import { z } from "zod";
 
-export const PjStatusEnum = z.enum([
-  "EM_ATIVACAO",
-  "ATIVO",
-  "SUSPENSO",
-  "ENCERRADO",
-]);
+export const PjStatusEnum = z.enum(["EM_ATIVACAO", "ATIVO", "SUSPENSO", "ENCERRADO"]);
 
-export const PjRegistrationStatusEnum = z.enum([
-  "RASCUNHO",
-  "PENDENTE",
-  "COMPLETO",
-]);
+export const PjRegistrationStatusEnum = z.enum(["RASCUNHO", "PENDENTE", "COMPLETO"]);
 
-export const PjDocumentStatusEnum = z.enum([
-  "PENDENTE",
-  "EM_ANALISE",
-  "REGULAR",
-]);
+export const PjDocumentStatusEnum = z.enum(["PENDENTE", "EM_ANALISE", "REGULAR"]);
 
 export const PjRemunerationTypeEnum = z.enum(["FIXO", "VARIAVEL", "MISTO"]);
 
@@ -54,7 +41,7 @@ export const PjHealthBenefitConfigSchema = PjBenefitConfigSchema.extend({
 
 export const PjBenefitsSchema = z.object({
   plano_saude: PjHealthBenefitConfigSchema,
-  plano_odontologico: PjBenefitConfigSchema,
+  plano_odontologico: PjHealthBenefitConfigSchema,
   vt: PjBenefitConfigSchema,
   vr_va: PjBenefitConfigSchema,
 });

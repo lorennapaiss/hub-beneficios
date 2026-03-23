@@ -1,7 +1,12 @@
 import "server-only";
 
 import * as XLSX from "xlsx";
-import type { PjBenefitConfig, PjFormValues, PjHealthDependent, PjInput } from "@/lib/schemas/pj";
+import type {
+  PjBenefitConfig,
+  PjFormValues,
+  PjHealthDependent,
+  PjInput,
+} from "@/lib/schemas/pj";
 import { PjInputSchema } from "@/lib/schemas/pj";
 import { createPj } from "@/server/pjs";
 
@@ -79,6 +84,7 @@ const CSV_HEADERS = [
   "beneficios.plano_odontologico.custo_mensal",
   "beneficios.plano_odontologico.coparticipacao_aplicavel",
   "beneficios.plano_odontologico.observacoes_regra",
+  "beneficios.plano_odontologico.dependentes_json",
   "beneficios.vt.elegivel",
   "beneficios.vt.status",
   "beneficios.vt.fornecedor",
@@ -127,20 +133,22 @@ const parseDependentes = (value: unknown): PjHealthDependent[] => {
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? (parsed as PjHealthDependent[]) : [];
   } catch {
-    throw new Error("Campo beneficios.plano_saude.dependentes_json invalido. Use JSON array.");
+    throw new Error("Campo de dependentes invalido. Use JSON array.");
   }
 };
 
 const parseBenefitStatus = (value: unknown): PjBenefitConfig["status"] => {
   const normalized = normalize(value);
-  return normalized === "ATIVO" || normalized === "ENCERRADO" || normalized === "NAO_CONCEDIDO"
+  return normalized === "ATIVO" ||
+    normalized === "ENCERRADO" ||
+    normalized === "NAO_CONCEDIDO"
     ? normalized
     : "NAO_CONCEDIDO";
 };
 
 const getBenefit = (
   row: CsvRow,
-  key: "plano_saude" | "plano_odontologico" | "vt" | "vr_va",
+  key: "plano_saude" | "plano_odontologico" | "vt" | "vr_va"
 ) => ({
   elegivel: parseBoolean(row[`beneficios.${key}.elegivel`]),
   status: parseBenefitStatus(row[`beneficios.${key}.status`]),
@@ -151,7 +159,9 @@ const getBenefit = (
   data_exclusao: normalize(row[`beneficios.${key}.data_exclusao`]),
   subsidio_empresa: parseNumber(row[`beneficios.${key}.subsidio_empresa`]),
   custo_mensal: parseNumber(row[`beneficios.${key}.custo_mensal`]),
-  coparticipacao_aplicavel: parseBoolean(row[`beneficios.${key}.coparticipacao_aplicavel`]),
+  coparticipacao_aplicavel: parseBoolean(
+    row[`beneficios.${key}.coparticipacao_aplicavel`]
+  ),
   observacoes_regra: normalize(row[`beneficios.${key}.observacoes_regra`]),
 });
 
@@ -163,7 +173,8 @@ const rowToInput = (row: CsvRow): PjInput => {
     data_nascimento: normalize(row.data_nascimento),
     email: normalize(row.email),
     telefone: normalize(row.telefone),
-    status_cadastro: (normalize(row.status_cadastro) || "PENDENTE") as PjFormValues["status_cadastro"],
+    status_cadastro: (normalize(row.status_cadastro) ||
+      "PENDENTE") as PjFormValues["status_cadastro"],
     observacoes_cadastrais: normalize(row.observacoes_cadastrais),
     razao_social: normalize(row.razao_social),
     nome_fantasia: normalize(row.nome_fantasia),
@@ -175,7 +186,8 @@ const rowToInput = (row: CsvRow): PjInput => {
     municipio_uf_empresa: normalize(row.municipio_uf_empresa),
     dados_bancarios: normalize(row.dados_bancarios),
     observacoes_contratuais: normalize(row.observacoes_contratuais),
-    status_vinculo: (normalize(row.status_vinculo) || "EM_ATIVACAO") as PjFormValues["status_vinculo"],
+    status_vinculo: (normalize(row.status_vinculo) ||
+      "EM_ATIVACAO") as PjFormValues["status_vinculo"],
     data_inicio: normalize(row.data_inicio),
     data_termino_prevista: normalize(row.data_termino_prevista),
     data_encerramento_real: normalize(row.data_encerramento_real),
@@ -190,7 +202,8 @@ const rowToInput = (row: CsvRow): PjInput => {
     tipo_prestacao: normalize(row.tipo_prestacao),
     jornada_dedicacao: normalize(row.jornada_dedicacao),
     valor_mensal_contratado: parseNumber(row.valor_mensal_contratado),
-    tipo_remuneracao: (normalize(row.tipo_remuneracao) || "FIXO") as PjFormValues["tipo_remuneracao"],
+    tipo_remuneracao: (normalize(row.tipo_remuneracao) ||
+      "FIXO") as PjFormValues["tipo_remuneracao"],
     valor_ajuda_custo: parseNumber(row.valor_ajuda_custo),
     valor_total_mensal_previsto: parseNumber(row.valor_total_mensal_previsto),
     data_base_reajuste: normalize(row.data_base_reajuste),
@@ -203,7 +216,12 @@ const rowToInput = (row: CsvRow): PjInput => {
         ...getBenefit(row, "plano_saude"),
         dependentes: parseDependentes(row["beneficios.plano_saude.dependentes_json"]),
       },
-      plano_odontologico: getBenefit(row, "plano_odontologico"),
+      plano_odontologico: {
+        ...getBenefit(row, "plano_odontologico"),
+        dependentes: parseDependentes(
+          row["beneficios.plano_odontologico.dependentes_json"]
+        ),
+      },
       vt: getBenefit(row, "vt"),
       vr_va: getBenefit(row, "vr_va"),
     },

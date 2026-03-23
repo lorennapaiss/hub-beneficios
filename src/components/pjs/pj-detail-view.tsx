@@ -5,15 +5,11 @@ import { PjHealthDescriptivePanel } from "@/components/pjs/pj-health-descriptive
 import type { PjDetail } from "@/server/pjs";
 
 const formatCurrency = (value: string | number) =>
-  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(value) || 0);
+  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
+    Number(value) || 0
+  );
 
-const Section = ({
-  title,
-  children,
-}: {
-  title: string;
-  children: ReactNode;
-}) => (
+const Section = ({ title, children }: { title: string; children: ReactNode }) => (
   <Card>
     <CardHeader>
       <CardTitle className="text-base">{title}</CardTitle>
@@ -36,7 +32,8 @@ const DetailGrid = ({ items }: { items: Array<{ label: string; value: string }> 
 );
 
 export function PjDetailView({ detail }: { detail: PjDetail }) {
-  const { pj, financialHistory, benefitHistory, allocationHistory, descriptiveHistory } = detail;
+  const { pj, financialHistory, benefitHistory, allocationHistory, descriptiveHistory } =
+    detail;
 
   return (
     <div className="space-y-6">
@@ -118,11 +115,20 @@ export function PjDetailView({ detail }: { detail: PjDetail }) {
                 </tr>
               ) : (
                 financialHistory.map((item) => (
-                  <tr key={item.pj_financial_history_id} className="border-b border-border">
+                  <tr
+                    key={item.pj_financial_history_id}
+                    className="border-b border-border"
+                  >
                     <td className="px-4 py-3">{item.data_vigencia}</td>
-                    <td className="px-4 py-3">{formatCurrency(item.valor_mensal_contratado)}</td>
-                    <td className="px-4 py-3">{formatCurrency(item.valor_ajuda_custo)}</td>
-                    <td className="px-4 py-3">{formatCurrency(item.valor_total_mensal_previsto)}</td>
+                    <td className="px-4 py-3">
+                      {formatCurrency(item.valor_mensal_contratado)}
+                    </td>
+                    <td className="px-4 py-3">
+                      {formatCurrency(item.valor_ajuda_custo)}
+                    </td>
+                    <td className="px-4 py-3">
+                      {formatCurrency(item.valor_total_mensal_previsto)}
+                    </td>
                   </tr>
                 ))
               )}
@@ -151,14 +157,18 @@ export function PjDetailView({ detail }: { detail: PjDetail }) {
                 </tr>
               ) : (
                 benefitHistory
-                  .filter((item) => item.beneficio !== "PLANO_SAUDE_DEPENDENTE")
+                  .filter(
+                    (item) =>
+                      item.beneficio !== "PLANO_SAUDE_DEPENDENTE" &&
+                      item.beneficio !== "PLANO_ODONTO_DEPENDENTE"
+                  )
                   .map((item) => (
-                  <tr key={item.pj_benefit_id} className="border-b border-border">
-                    <td className="px-4 py-3">{item.beneficio}</td>
-                    <td className="px-4 py-3">{item.status}</td>
-                    <td className="px-4 py-3">{item.fornecedor || "-"}</td>
-                    <td className="px-4 py-3">{item.data_inclusao || "-"}</td>
-                  </tr>
+                    <tr key={item.pj_benefit_id} className="border-b border-border">
+                      <td className="px-4 py-3">{item.beneficio}</td>
+                      <td className="px-4 py-3">{item.status}</td>
+                      <td className="px-4 py-3">{item.fornecedor || "-"}</td>
+                      <td className="px-4 py-3">{item.data_inclusao || "-"}</td>
+                    </tr>
                   ))
               )}
             </tbody>

@@ -39,24 +39,35 @@ const benefitMap = {
   VR_VA: "vr_va",
 } as const;
 
-const buildInitialBenefits = (benefitHistory: PjBenefitHistoryRow[], pj: PjListItem): PjBenefits => {
-  const dependentes = benefitHistory
-    .filter((item) => item.beneficio === "PLANO_SAUDE_DEPENDENTE")
+const getDependentes = (
+  benefitHistory: PjBenefitHistoryRow[],
+  benefitLabel: "PLANO_SAUDE_DEPENDENTE" | "PLANO_ODONTO_DEPENDENTE"
+) =>
+  benefitHistory
+    .filter((item) => item.beneficio === benefitLabel)
     .map((item) => parseHealthDependentObservation(item.observacoes))
     .filter((item): item is PjHealthDependent => item !== null);
 
-  const latestRows = [...benefitHistory].reverse().reduce<Partial<Record<keyof PjBenefits, PjBenefitHistoryRow>>>(
-    (acc, item) => {
+const buildInitialBenefits = (
+  benefitHistory: PjBenefitHistoryRow[],
+  pj: PjListItem
+): PjBenefits => {
+  const dependentesSaude = getDependentes(benefitHistory, "PLANO_SAUDE_DEPENDENTE");
+  const dependentesOdonto = getDependentes(benefitHistory, "PLANO_ODONTO_DEPENDENTE");
+
+  const latestRows = [...benefitHistory]
+    .reverse()
+    .reduce<Partial<Record<keyof PjBenefits, PjBenefitHistoryRow>>>((acc, item) => {
       const key = benefitMap[item.beneficio as keyof typeof benefitMap];
       if (key && !acc[key]) {
         acc[key] = item;
       }
       return acc;
-    },
-    {},
-  );
+    }, {});
 
-  const fromRow = (key: Exclude<keyof PjBenefits, "plano_saude">): PjBenefitConfig => {
+  const fromRow = (
+    key: Exclude<keyof PjBenefits, "plano_saude" | "plano_odontologico">
+  ): PjBenefitConfig => {
     const row = latestRows[key];
     if (row) {
       return {
@@ -76,12 +87,7 @@ const buildInitialBenefits = (benefitHistory: PjBenefitHistoryRow[], pj: PjListI
 
     return {
       ...defaultBenefit,
-      elegivel:
-        key === "plano_odontologico"
-          ? pj.elegivel_plano_odontologico === "true"
-          : key === "vt"
-            ? pj.elegivel_vt === "true"
-            : pj.elegivel_vr_va === "true",
+      elegivel: key === "vt" ? pj.elegivel_vt === "true" : pj.elegivel_vr_va === "true",
       status: "NAO_CONCEDIDO",
       fornecedor: "",
       produto_plano: "",
@@ -109,7 +115,7 @@ const buildInitialBenefits = (benefitHistory: PjBenefitHistoryRow[], pj: PjListI
         custo_mensal: 0,
         coparticipacao_aplicavel: healthRow.coparticipacao === "true",
         observacoes_regra: healthRow.observacoes,
-        dependentes,
+        dependentes: dependentesSaude,
       }
     : {
         ...defaultBenefit,
@@ -124,12 +130,44 @@ const buildInitialBenefits = (benefitHistory: PjBenefitHistoryRow[], pj: PjListI
         custo_mensal: 0,
         coparticipacao_aplicavel: pj.coparticipacao_aplicavel === "true",
         observacoes_regra: pj.observacoes_regra,
-        dependentes,
+        dependentes: dependentesSaude,
+      };
+
+  const odontoRow = latestRows.plano_odontologico;
+  const planoOdontologico: PjHealthBenefitConfig = odontoRow
+    ? {
+        elegivel: odontoRow.elegivel === "true",
+        status: odontoRow.status as PjHealthBenefitConfig["status"],
+        fornecedor: odontoRow.fornecedor,
+        produto_plano: odontoRow.produto_plano,
+        tipo_custeio: odontoRow.tipo_custeio,
+        data_inclusao: odontoRow.data_inclusao,
+        data_exclusao: odontoRow.data_exclusao,
+        subsidio_empresa: Number(odontoRow.subsidio_empresa) || 0,
+        custo_mensal: 0,
+        coparticipacao_aplicavel: odontoRow.coparticipacao === "true",
+        observacoes_regra: odontoRow.observacoes,
+        dependentes: dependentesOdonto,
+      }
+    : {
+        ...defaultBenefit,
+        elegivel: pj.elegivel_plano_odontologico === "true",
+        status: "NAO_CONCEDIDO",
+        fornecedor: "",
+        produto_plano: "",
+        tipo_custeio: "",
+        data_inclusao: "",
+        data_exclusao: "",
+        subsidio_empresa: 0,
+        custo_mensal: 0,
+        coparticipacao_aplicavel: false,
+        observacoes_regra: "",
+        dependentes: dependentesOdonto,
       };
 
   return {
     plano_saude: planoSaude,
-    plano_odontologico: fromRow("plano_odontologico"),
+    plano_odontologico: planoOdontologico,
     vt: fromRow("vt"),
     vr_va: fromRow("vr_va"),
   };
@@ -146,7 +184,10 @@ export default async function EditPjPage({ params }: RouteParams) {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Editar PJ" description="Atualize o cadastro operacional do profissional." />
+      <PageHeader
+        title="Editar PJ"
+        description="Atualize o cadastro operacional do profissional."
+      />
       <div className="rounded-lg border border-border bg-card p-6">
         <PjForm
           mode="edit"
@@ -165,11 +206,18 @@ export default async function EditPjPage({ params }: RouteParams) {
             cnpj: pj.cnpj,
             qsa_recebido: pj.qsa_recebido === "true",
             data_recebimento_qsa: pj.data_recebimento_qsa,
-            status_documental: pj.status_documental as "PENDENTE" | "EM_ANALISE" | "REGULAR",
+            status_documental: pj.status_documental as
+              | "PENDENTE"
+              | "EM_ANALISE"
+              | "REGULAR",
             municipio_uf_empresa: pj.municipio_uf_empresa,
             dados_bancarios: pj.dados_bancarios,
             observacoes_contratuais: pj.observacoes_contratuais,
-            status_vinculo: pj.status_vinculo as "EM_ATIVACAO" | "ATIVO" | "SUSPENSO" | "ENCERRADO",
+            status_vinculo: pj.status_vinculo as
+              | "EM_ATIVACAO"
+              | "ATIVO"
+              | "SUSPENSO"
+              | "ENCERRADO",
             data_inicio: pj.data_inicio,
             data_termino_prevista: pj.data_termino_prevista,
             data_encerramento_real: pj.data_encerramento_real,

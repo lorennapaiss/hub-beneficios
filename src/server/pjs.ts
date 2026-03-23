@@ -186,7 +186,16 @@ const BENEFIT_FIELD_MAP = {
   },
 } satisfies Record<
   keyof PjBenefits,
-  { label: string; elegivelField: keyof Pick<PjRow, "elegivel_plano_saude" | "elegivel_plano_odontologico" | "elegivel_vt" | "elegivel_vr_va"> }
+  {
+    label: string;
+    elegivelField: keyof Pick<
+      PjRow,
+      | "elegivel_plano_saude"
+      | "elegivel_plano_odontologico"
+      | "elegivel_vt"
+      | "elegivel_vr_va"
+    >;
+  }
 >;
 
 const normalize = (value?: string | null) => value?.trim() ?? "";
@@ -242,14 +251,16 @@ const sanitizeDependent = (dependent: PjHealthDependent): PjHealthDependent => (
   observacoes: normalize(dependent.observacoes),
 });
 
-const sanitizeHealthBenefit = (benefit: PjHealthBenefitConfig): PjHealthBenefitConfig => ({
+const sanitizeHealthBenefit = (
+  benefit: PjHealthBenefitConfig
+): PjHealthBenefitConfig => ({
   ...sanitizeBenefit(benefit),
   dependentes: benefit.dependentes.map(sanitizeDependent),
 });
 
 const getBenefitEntries = (beneficios: PjBenefits) =>
   (Object.entries(beneficios) as Array<[keyof PjBenefits, PjBenefitConfig]>).map(
-    ([key, value]) => [key, value] as const,
+    ([key, value]) => [key, value] as const
   );
 
 const hasConfiguredBenefitData = (benefit: PjBenefitConfig) =>
@@ -257,11 +268,11 @@ const hasConfiguredBenefitData = (benefit: PjBenefitConfig) =>
   benefit.status !== "NAO_CONCEDIDO" ||
   Boolean(
     normalize(benefit.fornecedor) ||
-      normalize(benefit.produto_plano) ||
-      normalize(benefit.tipo_custeio) ||
-      normalize(benefit.data_inclusao) ||
-      normalize(benefit.data_exclusao) ||
-      normalize(benefit.observacoes_regra),
+    normalize(benefit.produto_plano) ||
+    normalize(benefit.tipo_custeio) ||
+    normalize(benefit.data_inclusao) ||
+    normalize(benefit.data_exclusao) ||
+    normalize(benefit.observacoes_regra)
   ) ||
   benefit.subsidio_empresa > 0 ||
   benefit.custo_mensal > 0 ||
@@ -270,10 +281,10 @@ const hasConfiguredBenefitData = (benefit: PjBenefitConfig) =>
 const hasConfiguredDependentData = (dependent: PjHealthDependent) =>
   Boolean(
     normalize(dependent.nome) ||
-      normalize(dependent.parentesco) ||
-      normalize(dependent.data_inclusao) ||
-      normalize(dependent.data_exclusao) ||
-      normalize(dependent.observacoes),
+    normalize(dependent.parentesco) ||
+    normalize(dependent.data_inclusao) ||
+    normalize(dependent.data_exclusao) ||
+    normalize(dependent.observacoes)
   ) ||
   dependent.subsidio_empresa > 0 ||
   dependent.custo_mensal > 0 ||
@@ -282,17 +293,24 @@ const hasConfiguredDependentData = (dependent: PjHealthDependent) =>
 const getPrimaryBenefit = (beneficios: PjBenefits) =>
   beneficios.plano_saude.elegivel || hasConfiguredBenefitData(beneficios.plano_saude)
     ? beneficios.plano_saude
-    : getBenefitEntries(beneficios).find(([, benefit]) => hasConfiguredBenefitData(benefit))?.[1] ??
-      beneficios.plano_saude;
+    : (getBenefitEntries(beneficios).find(([, benefit]) =>
+        hasConfiguredBenefitData(benefit)
+      )?.[1] ?? beneficios.plano_saude);
 
 const getBenefitSummary = (beneficios: PjBenefits) => {
-  const configured = getBenefitEntries(beneficios).filter(([, benefit]) => hasConfiguredBenefitData(benefit));
+  const configured = getBenefitEntries(beneficios).filter(([, benefit]) =>
+    hasConfiguredBenefitData(benefit)
+  );
   const active = configured.filter(([, benefit]) => benefit.status === "ATIVO");
   const primary = getPrimaryBenefit(beneficios);
   const benefitNames = active.length > 0 ? active : configured;
   const dependenteCost = beneficios.plano_saude.dependentes.reduce(
     (total, dependent) => total + dependent.custo_mensal,
-    0,
+    0
+  );
+  const dependenteOdontoCost = beneficios.plano_odontologico.dependentes.reduce(
+    (total, dependent) => total + dependent.custo_mensal,
+    0
   );
 
   return {
@@ -309,8 +327,12 @@ const getBenefitSummary = (beneficios: PjBenefits) => {
     status_beneficio: primary.status,
     observacoes_regra: normalize(primary.observacoes_regra),
     custo_beneficios_mensal: String(
-      getBenefitEntries(beneficios).reduce((total, [, benefit]) => total + benefit.custo_mensal, 0) +
-        dependenteCost,
+      getBenefitEntries(beneficios).reduce(
+        (total, [, benefit]) => total + benefit.custo_mensal,
+        0
+      ) +
+        dependenteCost +
+        dependenteOdontoCost
     ),
   };
 };
@@ -329,12 +351,42 @@ export const parseHealthDependentObservation = (value?: string) => {
   }
 };
 
+const appendDependentBenefitHistory = async (
+  pjId: string,
+  benefitLabel: "PLANO_SAUDE_DEPENDENTE" | "PLANO_ODONTO_DEPENDENTE",
+  benefit: PjHealthBenefitConfig,
+  actor: string
+) => {
+  for (const dependent of benefit.dependentes) {
+    if (!hasConfiguredDependentData(dependent)) continue;
+
+    await appendRow("pj_benefits", {
+      pj_benefit_id: createUuid(),
+      pj_id: pjId,
+      beneficio: benefitLabel,
+      fornecedor: benefit.fornecedor,
+      produto_plano: dependent.nome,
+      status: benefit.status,
+      elegivel: "true",
+      concedido: String(benefit.status === "ATIVO"),
+      data_inclusao: dependent.data_inclusao,
+      data_exclusao: dependent.data_exclusao,
+      tipo_custeio: dependent.parentesco,
+      subsidio_empresa: String(dependent.subsidio_empresa),
+      coparticipacao: String(dependent.coparticipacao_aplicavel),
+      observacoes: serializeHealthDependent(dependent),
+      created_at: getNow(),
+      created_by: actor,
+    });
+  }
+};
+
 const appendAudit = async (
   action: "CREATE" | "UPDATE",
   pjId: string,
   before: Record<string, unknown> | null,
   after: Record<string, unknown>,
-  createdBy: string,
+  createdBy: string
 ) => {
   await appendRow("audit_log", {
     audit_id: createUuid(),
@@ -387,7 +439,7 @@ const sanitizeInput = (data: PjInput) => ({
   observacoes_financeiras: normalize(data.observacoes_financeiras),
   beneficios: {
     plano_saude: sanitizeHealthBenefit(data.beneficios.plano_saude),
-    plano_odontologico: sanitizeBenefit(data.beneficios.plano_odontologico),
+    plano_odontologico: sanitizeHealthBenefit(data.beneficios.plano_odontologico),
     vt: sanitizeBenefit(data.beneficios.vt),
     vr_va: sanitizeBenefit(data.beneficios.vr_va),
   },
@@ -398,7 +450,7 @@ const toPjRow = (
   input: ReturnType<typeof sanitizeInput>,
   actor: string,
   now: string,
-  existing?: PjRow,
+  existing?: PjRow
 ): PjRow => ({
   ...getBenefitSummary(input.beneficios),
   pj_id: pjId,
@@ -455,15 +507,18 @@ const toPjRow = (
 
 const hydratePj = (row: PjRow): PjListItem => {
   const custoTotalMensal =
-    parseNumber(row.valor_total_mensal_previsto) + parseNumber(row.custo_beneficios_mensal);
+    parseNumber(row.valor_total_mensal_previsto) +
+    parseNumber(row.custo_beneficios_mensal);
   const percentualBeneficios =
     parseNumber(row.valor_total_mensal_previsto) > 0
-      ? (parseNumber(row.custo_beneficios_mensal) / parseNumber(row.valor_total_mensal_previsto)) *
+      ? (parseNumber(row.custo_beneficios_mensal) /
+          parseNumber(row.valor_total_mensal_previsto)) *
         100
       : 0;
   const flagDocumentalPendente =
     parseBoolean(row.documentacao_pendente) || row.status_documental !== "REGULAR";
-  const flagSemCentroCusto = isActiveStatus(row.status_vinculo) && !normalize(row.centro_custo);
+  const flagSemCentroCusto =
+    isActiveStatus(row.status_vinculo) && !normalize(row.centro_custo);
   const flagSemBeneficioConfigurado =
     isActiveStatus(row.status_vinculo) &&
     row.status_beneficio === "NAO_CONCEDIDO" &&
@@ -471,17 +526,20 @@ const hydratePj = (row: PjRow): PjListItem => {
   const flagAlocacaoIncompleta =
     isActiveStatus(row.status_vinculo) &&
     [row.marca, row.area, row.gestor_responsavel, row.centro_custo].some(
-      (value) => !normalize(value),
+      (value) => !normalize(value)
     );
   const beneficioAtivoIncompleto =
     row.status_beneficio === "ATIVO" &&
-    [row.fornecedor_beneficio, row.data_inclusao_beneficio].some((value) => !normalize(value));
+    [row.fornecedor_beneficio, row.data_inclusao_beneficio].some(
+      (value) => !normalize(value)
+    );
   const semFinanceiroVigente =
     isActiveStatus(row.status_vinculo) && parseNumber(row.valor_mensal_contratado) <= 0;
   const pendencias: string[] = [];
 
   if (flagDocumentalPendente) pendencias.push("Documentacao pendente");
-  if (flagSemCentroCusto || flagAlocacaoIncompleta) pendencias.push("Alocacao incompleta");
+  if (flagSemCentroCusto || flagAlocacaoIncompleta)
+    pendencias.push("Alocacao incompleta");
   if (flagSemBeneficioConfigurado) pendencias.push("Sem beneficio configurado");
   if (beneficioAtivoIncompleto) pendencias.push("Beneficio ativo inconsistente");
   if (semFinanceiroVigente) pendencias.push("Sem valor mensal vigente");
@@ -501,7 +559,7 @@ const hydratePj = (row: PjRow): PjListItem => {
 
 const assertNoDuplicateActiveRegistry = async (
   input: ReturnType<typeof sanitizeInput>,
-  pjId?: string,
+  pjId?: string
 ) => {
   const rows = await safeGetRowsCached<PjRow>("pjs");
   const duplicate = rows.find(
@@ -509,7 +567,7 @@ const assertNoDuplicateActiveRegistry = async (
       row.pj_id !== pjId &&
       normalize(row.cpf) === input.cpf &&
       normalize(row.cnpj) === input.cnpj &&
-      isActiveStatus(row.status_vinculo),
+      isActiveStatus(row.status_vinculo)
   );
 
   if (duplicate) {
@@ -520,7 +578,7 @@ const assertNoDuplicateActiveRegistry = async (
 const appendFinancialHistory = async (
   pjId: string,
   input: ReturnType<typeof sanitizeInput>,
-  actor: string,
+  actor: string
 ) => {
   await appendRow("pj_financial_history", {
     pj_financial_history_id: createUuid(),
@@ -539,7 +597,7 @@ const appendFinancialHistory = async (
 const appendBenefitHistory = async (
   pjId: string,
   input: ReturnType<typeof sanitizeInput>,
-  actor: string,
+  actor: string
 ) => {
   for (const [benefitKey, benefit] of getBenefitEntries(input.beneficios)) {
     if (!hasConfiguredBenefitData(benefit)) continue;
@@ -562,37 +620,26 @@ const appendBenefitHistory = async (
       created_at: getNow(),
       created_by: actor,
     });
-
   }
 
-  for (const dependent of input.beneficios.plano_saude.dependentes) {
-    if (!hasConfiguredDependentData(dependent)) continue;
-
-    await appendRow("pj_benefits", {
-      pj_benefit_id: createUuid(),
-      pj_id: pjId,
-      beneficio: "PLANO_SAUDE_DEPENDENTE",
-      fornecedor: input.beneficios.plano_saude.fornecedor,
-      produto_plano: dependent.nome,
-      status: input.beneficios.plano_saude.status,
-      elegivel: "true",
-      concedido: String(input.beneficios.plano_saude.status === "ATIVO"),
-      data_inclusao: dependent.data_inclusao,
-      data_exclusao: dependent.data_exclusao,
-      tipo_custeio: dependent.parentesco,
-      subsidio_empresa: String(dependent.subsidio_empresa),
-      coparticipacao: String(dependent.coparticipacao_aplicavel),
-      observacoes: serializeHealthDependent(dependent),
-      created_at: getNow(),
-      created_by: actor,
-    });
-  }
+  await appendDependentBenefitHistory(
+    pjId,
+    "PLANO_SAUDE_DEPENDENTE",
+    input.beneficios.plano_saude,
+    actor
+  );
+  await appendDependentBenefitHistory(
+    pjId,
+    "PLANO_ODONTO_DEPENDENTE",
+    input.beneficios.plano_odontologico,
+    actor
+  );
 };
 
 const appendAllocationHistory = async (
   pjId: string,
   input: ReturnType<typeof sanitizeInput>,
-  actor: string,
+  actor: string
 ) => {
   await appendRow("pj_allocations", {
     pj_allocation_id: createUuid(),
@@ -616,8 +663,10 @@ export const summarizePjs = (rows: PjListItem[]): PjSummary => ({
   total: rows.length,
   ativos: rows.filter((row) => row.status_vinculo === "ATIVO").length,
   pendenciasDocumentais: rows.filter((row) => row.flag_documental_pendente).length,
-  alocacaoIncompleta: rows.filter((row) => row.pendencias.includes("Alocacao incompleta")).length,
-  semBeneficioConfigurado: rows.filter((row) => row.flag_sem_beneficio_configurado).length,
+  alocacaoIncompleta: rows.filter((row) => row.pendencias.includes("Alocacao incompleta"))
+    .length,
+  semBeneficioConfigurado: rows.filter((row) => row.flag_sem_beneficio_configurado)
+    .length,
   custoTotalMensal: rows.reduce((total, row) => total + row.custo_total_mensal, 0),
 });
 
@@ -642,10 +691,11 @@ export const listPjs = async ({
       [row.nome_completo, row.cpf, row.cnpj, row.pj_id, row.razao_social]
         .join(" ")
         .toLowerCase()
-        .includes(term),
+        .includes(term)
     );
   }
-  if (status_vinculo) result = result.filter((row) => row.status_vinculo === status_vinculo);
+  if (status_vinculo)
+    result = result.filter((row) => row.status_vinculo === status_vinculo);
   if (marca) result = result.filter((row) => row.marca === marca);
   if (area) result = result.filter((row) => row.area === area);
   if (gestor_responsavel) {
@@ -655,7 +705,8 @@ export const listPjs = async ({
   if (status_documental) {
     result = result.filter((row) => row.status_documental === status_documental);
   }
-  if (benefit_status) result = result.filter((row) => row.status_beneficio === benefit_status);
+  if (benefit_status)
+    result = result.filter((row) => row.status_beneficio === benefit_status);
 
   const total = result.length;
   const start = Math.max(offset, 0);
@@ -679,12 +730,13 @@ export const getPjDetailById = async (pjId: string): Promise<PjDetail | null> =>
   const pj = await getPjById(pjId);
   if (!pj) return null;
 
-  const [financialHistory, benefitHistory, allocationHistory, descriptiveHistory] = await Promise.all([
-    safeGetRowsCached<PjFinancialHistoryRow>("pj_financial_history"),
-    safeGetRowsCached<PjBenefitHistoryRow>("pj_benefits"),
-    safeGetRowsCached<PjAllocationHistoryRow>("pj_allocations"),
-    listPjHealthDescriptiveHistory(pjId),
-  ]);
+  const [financialHistory, benefitHistory, allocationHistory, descriptiveHistory] =
+    await Promise.all([
+      safeGetRowsCached<PjFinancialHistoryRow>("pj_financial_history"),
+      safeGetRowsCached<PjBenefitHistoryRow>("pj_benefits"),
+      safeGetRowsCached<PjAllocationHistoryRow>("pj_allocations"),
+      listPjHealthDescriptiveHistory(pjId),
+    ]);
 
   return {
     pj,
