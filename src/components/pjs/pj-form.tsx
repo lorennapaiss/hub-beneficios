@@ -31,6 +31,7 @@ type PjFormProps = {
   initialValues?: Partial<PjFormValues>;
 };
 
+type PjTabValue = "cadastro" | "empresa" | "vinculo" | "beneficios";
 type BenefitKey = keyof PjBenefits;
 type BenefitWithDependentsKey = "plano_saude" | "plano_odontologico";
 
@@ -135,6 +136,70 @@ const formatServerError = (payload: unknown) => {
   return details.length > 0
     ? `${candidate.error ?? "Dados invalidos."} ${details.join(" | ")}`
     : (candidate.error ?? "Erro ao salvar PJ.");
+};
+
+const getFirstErrorPath = (value: unknown, parentPath = ""): string | null => {
+  if (!value || typeof value !== "object") return null;
+
+  for (const [key, nested] of Object.entries(value)) {
+    const path = parentPath ? `${parentPath}.${key}` : key;
+    if (key === "message" && typeof nested === "string" && nested) {
+      return parentPath;
+    }
+
+    const nestedPath = getFirstErrorPath(nested, path);
+    if (nestedPath) return nestedPath;
+  }
+
+  return null;
+};
+
+const getTabFromErrorPath = (path: string | null): PjTabValue => {
+  if (!path) return "cadastro";
+  if (
+    path.startsWith("razao_social") ||
+    path.startsWith("nome_fantasia") ||
+    path.startsWith("cnpj") ||
+    path.startsWith("qsa_recebido") ||
+    path.startsWith("data_recebimento_qsa") ||
+    path.startsWith("status_documental") ||
+    path.startsWith("municipio_uf_empresa") ||
+    path.startsWith("dados_bancarios") ||
+    path.startsWith("observacoes_contratuais")
+  ) {
+    return "empresa";
+  }
+  if (
+    path.startsWith("status_vinculo") ||
+    path.startsWith("data_inicio") ||
+    path.startsWith("data_termino_prevista") ||
+    path.startsWith("data_encerramento_real") ||
+    path.startsWith("tipo_contrato_categoria") ||
+    path.startsWith("regime_operacional") ||
+    path.startsWith("gestor_responsavel") ||
+    path.startsWith("area") ||
+    path.startsWith("marca") ||
+    path.startsWith("unidade") ||
+    path.startsWith("centro_custo") ||
+    path.startsWith("empresa_alocacao") ||
+    path.startsWith("tipo_prestacao") ||
+    path.startsWith("jornada_dedicacao") ||
+    path.startsWith("valor_mensal_contratado") ||
+    path.startsWith("tipo_remuneracao") ||
+    path.startsWith("valor_ajuda_custo") ||
+    path.startsWith("valor_total_mensal_previsto") ||
+    path.startsWith("data_base_reajuste") ||
+    path.startsWith("historico_reajuste_resumo") ||
+    path.startsWith("status_pagamento") ||
+    path.startsWith("ultima_competencia_paga") ||
+    path.startsWith("observacoes_financeiras")
+  ) {
+    return "vinculo";
+  }
+  if (path.startsWith("beneficios")) {
+    return "beneficios";
+  }
+  return "cadastro";
 };
 
 function SectionTitle({ title, description }: { title: string; description: string }) {
@@ -455,10 +520,12 @@ function BenefitCard({
 export function PjForm({ mode, pjId, initialValues }: PjFormProps) {
   const router = useRouter();
   const [serverError, setServerError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<PjTabValue>("cadastro");
   const {
     register,
     control,
     handleSubmit,
+    setFocus,
     formState: { errors, isSubmitting },
   } = useForm<PjFormValues>({
     resolver: zodResolver(PjInputSchema) as Resolver<PjFormValues>,
@@ -508,9 +575,24 @@ export function PjForm({ mode, pjId, initialValues }: PjFormProps) {
     router.refresh();
   };
 
+  const onInvalid = (formErrors: FieldErrors<PjFormValues>) => {
+    const firstErrorPath = getFirstErrorPath(formErrors);
+    setActiveTab(getTabFromErrorPath(firstErrorPath));
+    setServerError("Existem campos obrigatorios ou invalidos no formulario.");
+    if (firstErrorPath) {
+      setTimeout(() => {
+        setFocus(firstErrorPath as Parameters<typeof setFocus>[0]);
+      }, 0);
+    }
+  };
+
   return (
-    <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
-      <Tabs defaultValue="cadastro" className="space-y-6">
+    <form className="space-y-6" onSubmit={handleSubmit(onSubmit, onInvalid)}>
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => setActiveTab(value as PjTabValue)}
+        className="space-y-6"
+      >
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="cadastro">Cadastro</TabsTrigger>
           <TabsTrigger value="empresa">Empresa</TabsTrigger>
