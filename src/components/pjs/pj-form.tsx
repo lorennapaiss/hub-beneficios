@@ -113,6 +113,30 @@ const benefitLabels: Record<BenefitKey, string> = {
 const inputClassName =
   "w-full rounded-md border border-border bg-background px-3 py-2 text-sm";
 
+const formatServerError = (payload: unknown) => {
+  if (!payload || typeof payload !== "object") {
+    return "Erro ao salvar PJ.";
+  }
+
+  const candidate = payload as {
+    error?: string;
+    details?: {
+      fieldErrors?: Record<string, string[] | undefined>;
+      formErrors?: string[];
+    };
+  };
+
+  const fieldErrors = Object.entries(candidate.details?.fieldErrors ?? {})
+    .flatMap(([, messages]) => messages ?? [])
+    .filter(Boolean);
+  const formErrors = (candidate.details?.formErrors ?? []).filter(Boolean);
+  const details = [...formErrors, ...fieldErrors];
+
+  return details.length > 0
+    ? `${candidate.error ?? "Dados invalidos."} ${details.join(" | ")}`
+    : (candidate.error ?? "Erro ao salvar PJ.");
+};
+
 function SectionTitle({ title, description }: { title: string; description: string }) {
   return (
     <div className="space-y-1">
@@ -473,9 +497,9 @@ export function PjForm({ mode, pjId, initialValues }: PjFormProps) {
       body: JSON.stringify(values),
     });
 
-    const payload = await response.json();
+    const payload = await response.json().catch(() => null);
     if (!response.ok) {
-      setServerError(payload.error ?? "Erro ao salvar PJ.");
+      setServerError(formatServerError(payload));
       return;
     }
 

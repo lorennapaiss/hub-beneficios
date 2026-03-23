@@ -255,7 +255,7 @@ const sanitizeHealthBenefit = (
   benefit: PjHealthBenefitConfig
 ): PjHealthBenefitConfig => ({
   ...sanitizeBenefit(benefit),
-  dependentes: benefit.dependentes.map(sanitizeDependent),
+  dependentes: (benefit.dependentes ?? []).map(sanitizeDependent),
 });
 
 const getBenefitEntries = (beneficios: PjBenefits) =>
@@ -304,11 +304,11 @@ const getBenefitSummary = (beneficios: PjBenefits) => {
   const active = configured.filter(([, benefit]) => benefit.status === "ATIVO");
   const primary = getPrimaryBenefit(beneficios);
   const benefitNames = active.length > 0 ? active : configured;
-  const dependenteCost = beneficios.plano_saude.dependentes.reduce(
+  const dependenteCost = (beneficios.plano_saude.dependentes ?? []).reduce(
     (total, dependent) => total + dependent.custo_mensal,
     0
   );
-  const dependenteOdontoCost = beneficios.plano_odontologico.dependentes.reduce(
+  const dependenteOdontoCost = (beneficios.plano_odontologico.dependentes ?? []).reduce(
     (total, dependent) => total + dependent.custo_mensal,
     0
   );
@@ -357,7 +357,7 @@ const appendDependentBenefitHistory = async (
   benefit: PjHealthBenefitConfig,
   actor: string
 ) => {
-  for (const dependent of benefit.dependentes) {
+  for (const dependent of benefit.dependentes ?? []) {
     if (!hasConfiguredDependentData(dependent)) continue;
 
     await appendRow("pj_benefits", {

@@ -36,7 +36,12 @@ export const PjBenefitConfigSchema = z.object({
 });
 
 export const PjHealthBenefitConfigSchema = PjBenefitConfigSchema.extend({
-  dependentes: z.array(PjHealthDependentSchema).default([]),
+  dependentes: z
+    .preprocess(
+      (value) => (Array.isArray(value) ? value : []),
+      z.array(PjHealthDependentSchema)
+    )
+    .default([]),
 });
 
 export const PjBenefitsSchema = z.object({
