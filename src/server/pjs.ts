@@ -763,7 +763,8 @@ export const createPj = async (input: PjInput, createdBy: string) => {
     appendAudit("CREATE", pjId, null, pj, createdBy),
   ]);
 
-  return hydratePj(pj);
+  const persisted = (await findById("pjs", "pj_id", pjId)) as PjRow | null;
+  return hydratePj(persisted ?? pj);
 };
 
 export const updatePj = async (pjId: string, input: PjInput, updatedBy: string) => {
@@ -776,7 +777,10 @@ export const updatePj = async (pjId: string, input: PjInput, updatedBy: string) 
   await assertNoDuplicateActiveRegistry(data, pjId);
 
   const updated = toPjRow(pjId, data, updatedBy, getNow(), existing);
-  await updateRowById("pjs", "pj_id", pjId, updated);
+  const result = await updateRowById("pjs", "pj_id", pjId, updated);
+  if (!result.ok) {
+    throw new Error(result.message ?? "Nao foi possivel atualizar o PJ.");
+  }
   await Promise.all([
     appendFinancialHistory(pjId, data, updatedBy),
     appendBenefitHistory(pjId, data, updatedBy),
@@ -784,5 +788,10 @@ export const updatePj = async (pjId: string, input: PjInput, updatedBy: string) 
     appendAudit("UPDATE", pjId, existing, updated, updatedBy),
   ]);
 
-  return hydratePj(updated);
+  const persisted = (await findById("pjs", "pj_id", pjId)) as PjRow | null;
+  if (!persisted) {
+    throw new Error("PJ atualizado, mas nao foi encontrado apos a gravacao.");
+  }
+
+  return hydratePj(persisted);
 };

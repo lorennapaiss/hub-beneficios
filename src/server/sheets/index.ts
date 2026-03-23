@@ -59,6 +59,45 @@ const stringifyValue = (value: unknown) => {
   return String(value);
 };
 
+const getMissingHeaders = (headers: string[], requiredHeaders: string[]) =>
+  requiredHeaders
+    .map((header) => normalizeKey(header))
+    .filter((header) => header && !headers.includes(header));
+
+const ensureHeaders = async (
+  sheets: sheets_v4.Sheets,
+  spreadsheetId: string,
+  sheetName: string,
+  requiredHeaders: string[]
+) => {
+  const headerResponse = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `${sheetName}!1:1`,
+  });
+
+  const currentValues = (headerResponse.data.values ?? []) as string[][];
+  const headers = parseHeaders(currentValues);
+  const missingHeaders = getMissingHeaders(headers, requiredHeaders);
+
+  if (missingHeaders.length === 0) {
+    return headers;
+  }
+
+  const nextHeaders = [...headers, ...missingHeaders];
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: `${sheetName}!1:1`,
+    valueInputOption: "RAW",
+    requestBody: {
+      values: [nextHeaders],
+    },
+  });
+
+  invalidateCache(`sheet:${sheetName}`);
+  return nextHeaders;
+};
+
 export const getClient = async (): Promise<sheets_v4.Sheets> => {
   try {
     const auth = new google.auth.JWT({
@@ -109,12 +148,12 @@ export const appendRow = async (
   try {
     const sheets = await getClient();
     const spreadsheetId = env.SHEETS_SPREADSHEET_ID;
-    const headerResponse = await sheets.spreadsheets.values.get({
+    const headers = await ensureHeaders(
+      sheets,
       spreadsheetId,
-      range: `${sheetName}!1:1`,
-    });
-
-    const headers = parseHeaders((headerResponse.data.values ?? []) as string[][]);
+      sheetName,
+      Object.keys(rowObject)
+    );
     const rowValues = headers.map((header) => stringifyValue(rowObject[header]));
 
     await sheets.spreadsheets.values.append({
@@ -134,16 +173,10 @@ export const appendRow = async (
   }
 };
 
-export const findById = async (
-  sheetName: string,
-  idField: string,
-  idValue: string
-) => {
+export const findById = async (sheetName: string, idField: string, idValue: string) => {
   const rows = await getRows(sheetName);
   const target = normalizeValue(idValue);
-  return (
-    rows.find((row) => normalizeValue(row[idField]) === target) ?? null
-  );
+  return rows.find((row) => normalizeValue(row[idField]) === target) ?? null;
 };
 
 export const updateRowById = async (
@@ -155,6 +188,7 @@ export const updateRowById = async (
   try {
     const sheets = await getClient();
     const spreadsheetId = env.SHEETS_SPREADSHEET_ID;
+    await ensureHeaders(sheets, spreadsheetId, sheetName, Object.keys(patchObject));
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
       range: sheetName,
@@ -172,9 +206,7 @@ export const updateRowById = async (
     }
     const dataRows = values.slice(1);
     const target = normalizeValue(idValue);
-    const rowIndex = dataRows.findIndex(
-      (row) => normalizeValue(row[idIndex]) === target
-    );
+    const rowIndex = dataRows.findIndex((row) => normalizeValue(row[idIndex]) === target);
 
     if (rowIndex === -1) {
       return { ok: false, message: "Registro não encontrado." };
