@@ -1,13 +1,10 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions, isAdminEmail, isAllowedEmail } from "@/lib/auth";
+import { requireAdminUser, handleApiError } from "@/server/api-utils";
 import { getDriveClient } from "@/server/drive";
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
-  if (!isAllowedEmail(session?.user?.email) || !isAdminEmail(session?.user?.email)) {
-    return NextResponse.json({ ok: false, error: "Acesso negado." }, { status: 403 });
-  }
+  const { response } = await requireAdminUser();
+  if (response) return response;
 
   try {
     const drive = await getDriveClient();
@@ -25,10 +22,6 @@ export async function GET() {
       folders: response.data.files ?? [],
     });
   } catch (error) {
-    console.error("Erro ao diagnosticar Drive.", error);
-    return NextResponse.json(
-      { ok: false, error: "Erro ao diagnosticar Drive." },
-      { status: 500 }
-    );
+    return handleApiError(error, "drive:diagnostic");
   }
 }

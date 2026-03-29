@@ -52,7 +52,7 @@ const toApiError = (
 
   if (status === 403 || message.includes("does not have permission")) {
     return new ApiError(
-      `A service account nao tem permissao para acessar a planilha de pagamentos. Compartilhe a planilha com ${env.GOOGLE_SERVICE_ACCOUNT_EMAIL}.`,
+      "A service account nao tem permissao para acessar a planilha de pagamentos. Verifique se a planilha foi compartilhada com a conta de servico.",
       500,
       "PAYMENTS_SHEETS_FORBIDDEN",
     );

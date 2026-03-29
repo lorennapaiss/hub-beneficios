@@ -1,23 +1,17 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions, isAllowedEmail } from "@/lib/auth";
 import { PersonInputSchema } from "@/lib/schemas/person";
 import { createPerson, listPeople } from "@/server/people";
 import { checkRateLimit } from "@/server/rate-limit";
-
-const parseNumber = (value: string | null, fallback: number) => {
-  if (!value) return fallback;
-  const parsed = Number(value);
-  return Number.isNaN(parsed) ? fallback : parsed;
-};
-
-const getActorEmail = (email?: string | null) => email ?? "unknown";
+import {
+  requireAllowedUser,
+  getActorEmail,
+  parseNumber,
+  handleApiError,
+} from "@/server/api-utils";
 
 export async function GET(request: Request) {
-  const session = await getServerSession(authOptions);
-  if (!isAllowedEmail(session?.user?.email)) {
-    return NextResponse.json({ ok: false, error: "Acesso negado." }, { status: 403 });
-  }
+  const { response } = await requireAllowedUser();
+  if (response) return response;
 
   const { searchParams } = new URL(request.url);
   const search = searchParams.get("search") ?? undefined;
@@ -37,19 +31,13 @@ export async function GET(request: Request) {
       offset,
     });
   } catch (error) {
-    console.error("Erro ao listar pessoas.", error);
-    return NextResponse.json(
-      { ok: false, error: "Erro ao listar pessoas." },
-      { status: 500 }
-    );
+    return handleApiError(error, "people");
   }
 }
 
 export async function POST(request: Request) {
-  const session = await getServerSession(authOptions);
-  if (!isAllowedEmail(session?.user?.email)) {
-    return NextResponse.json({ ok: false, error: "Acesso negado." }, { status: 403 });
-  }
+  const { session, response } = await requireAllowedUser();
+  if (response) return response;
 
   const rate = checkRateLimit(request, {
     key: "people:create",
@@ -73,7 +61,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const person = await createPerson(parsed.data, getActorEmail(session?.user?.email));
+    const person = await createPerson(parsed.data, getActorEmail(session));
     return NextResponse.json({ ok: true, data: person }, { status: 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Erro ao criar pessoa.";

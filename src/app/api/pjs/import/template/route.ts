@@ -1,12 +1,9 @@
-import { getServerSession } from "next-auth";
-import { authOptions, isAllowedEmail } from "@/lib/auth";
+import { requireAllowedUser } from "@/server/api-utils";
 import { getPjImportCsvTemplate } from "@/server/pj-import";
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
-  if (!isAllowedEmail(session?.user?.email)) {
-    return new Response("Acesso negado.", { status: 403 });
-  }
+  const { response } = await requireAllowedUser();
+  if (response) return response;
 
   return new Response(getPjImportCsvTemplate(), {
     status: 200,

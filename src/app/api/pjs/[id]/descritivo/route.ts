@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions, isAllowedEmail } from "@/lib/auth";
+import { requireAllowedUser, getActorEmail, handleApiError } from "@/server/api-utils";
 import {
   generatePjHealthDescriptive,
   getPjHealthDescriptivePreview,
@@ -23,16 +22,12 @@ const resolveId = async (request: Request, params: RouteParams["params"]) => {
   return pathname.split("/").at(-2) ?? "";
 };
 
-const getActorEmail = (email?: string | null) => email ?? "unknown";
-
 const getCompetencia = (request: Request) =>
   new URL(request.url).searchParams.get("competencia")?.trim() ?? "";
 
 export async function GET(request: Request, { params }: RouteParams) {
-  const session = await getServerSession(authOptions);
-  if (!isAllowedEmail(session?.user?.email)) {
-    return NextResponse.json({ ok: false, error: "Acesso negado." }, { status: 403 });
-  }
+  const { response } = await requireAllowedUser();
+  if (response) return response;
 
   const competencia = getCompetencia(request);
   if (!competencia) {
@@ -47,16 +42,13 @@ export async function GET(request: Request, { params }: RouteParams) {
     const preview = await getPjHealthDescriptivePreview(id, competencia);
     return NextResponse.json({ ok: true, data: preview });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Erro ao montar descritivo.";
-    return NextResponse.json({ ok: false, error: message }, { status: 400 });
+    return handleApiError(error, "pjs:descritivo:preview");
   }
 }
 
 export async function POST(request: Request, { params }: RouteParams) {
-  const session = await getServerSession(authOptions);
-  if (!isAllowedEmail(session?.user?.email)) {
-    return NextResponse.json({ ok: false, error: "Acesso negado." }, { status: 403 });
-  }
+  const { session, response } = await requireAllowedUser();
+  if (response) return response;
 
   const rate = checkRateLimit(request, {
     key: "pjs:descritivo",
@@ -83,11 +75,10 @@ export async function POST(request: Request, { params }: RouteParams) {
     const id = (await resolveId(request, params)).trim();
     const preview = await generatePjHealthDescriptive(id, competencia, {
       persist: true,
-      actor: getActorEmail(session?.user?.email),
+      actor: getActorEmail(session),
     });
     return NextResponse.json({ ok: true, data: preview }, { status: 201 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Erro ao gerar descritivo.";
-    return NextResponse.json({ ok: false, error: message }, { status: 400 });
+    return handleApiError(error, "pjs:descritivo:generate");
   }
 }

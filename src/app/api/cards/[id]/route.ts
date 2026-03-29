@@ -1,12 +1,9 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions, isAllowedEmail } from "@/lib/auth";
+import { requireAllowedUser, getActorEmail, handleApiError } from "@/server/api-utils";
 import { CardInputSchema } from "@/lib/schemas/card";
 import { getCardById, updateCard } from "@/server/cards";
 import { checkRateLimit } from "@/server/rate-limit";
 import { isUuid } from "@/lib/uuid";
-
-const getActorEmail = (email?: string | null) => email ?? "unknown";
 
 type RouteParams = {
   params: Promise<{ id: string }>;
@@ -24,10 +21,8 @@ const resolveId = async (request: Request, params: RouteParams["params"]) => {
 };
 
 export async function GET(request: Request, { params }: RouteParams) {
-  const session = await getServerSession(authOptions);
-  if (!isAllowedEmail(session?.user?.email)) {
-    return NextResponse.json({ ok: false, error: "Acesso negado." }, { status: 403 });
-  }
+  const { response } = await requireAllowedUser();
+  if (response) return response;
 
   try {
     const id = (await resolveId(request, params)).trim();
@@ -43,19 +38,13 @@ export async function GET(request: Request, { params }: RouteParams) {
     }
     return NextResponse.json({ ok: true, data: card });
   } catch (error) {
-    console.error("Erro ao buscar cartão.", error);
-    return NextResponse.json(
-      { ok: false, error: "Erro ao buscar cartao." },
-      { status: 500 }
-    );
+    return handleApiError(error, "cards:get");
   }
 }
 
 export async function PUT(request: Request, { params }: RouteParams) {
-  const session = await getServerSession(authOptions);
-  if (!isAllowedEmail(session?.user?.email)) {
-    return NextResponse.json({ ok: false, error: "Acesso negado." }, { status: 403 });
-  }
+  const { session, response } = await requireAllowedUser();
+  if (response) return response;
 
   const rate = checkRateLimit(request, {
     key: "cards:update",
@@ -83,11 +72,10 @@ export async function PUT(request: Request, { params }: RouteParams) {
     const card = await updateCard(
       id,
       parsed.data,
-      getActorEmail(session?.user?.email)
+      getActorEmail(session)
     );
     return NextResponse.json({ ok: true, data: card });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Erro ao atualizar cartao.";
-    return NextResponse.json({ ok: false, error: message }, { status: 400 });
+    return handleApiError(error, "cards:update");
   }
 }

@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions, isAllowedEmail } from "@/lib/auth";
+import { requireAllowedUser, getActorEmail, handleApiError } from "@/server/api-utils";
 import { DeallocationInputSchema } from "@/lib/schemas/allocation";
 import { getCardById } from "@/server/cards";
 import { closeAllocation, getActiveAllocationByCardFresh } from "@/server/allocations";
@@ -22,13 +21,9 @@ const resolveId = async (request: Request, params: RouteParams["params"]) => {
   return pathname.split("/").pop() ?? "";
 };
 
-const getActorEmail = (email?: string | null) => email ?? "unknown";
-
 export async function POST(request: Request, { params }: RouteParams) {
-  const session = await getServerSession(authOptions);
-  if (!isAllowedEmail(session?.user?.email)) {
-    return NextResponse.json({ ok: false, error: "Acesso negado." }, { status: 403 });
-  }
+  const { session, response } = await requireAllowedUser();
+  if (response) return response;
 
   const rate = checkRateLimit(request, {
     key: "cards:deallocate",
@@ -73,11 +68,10 @@ export async function POST(request: Request, { params }: RouteParams) {
       card,
       allocation,
       parsed.data,
-      getActorEmail(session?.user?.email)
+      getActorEmail(session)
     );
     return NextResponse.json({ ok: true, data: result });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Erro ao encerrar alocação.";
-    return NextResponse.json({ ok: false, error: message }, { status: 400 });
+    return handleApiError(error, "cards:deallocate");
   }
 }

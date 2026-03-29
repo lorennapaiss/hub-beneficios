@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
+import { getPagination, makePageLinkBuilder } from "@/lib/pagination";
 import { listPeople } from "@/server/people";
 
 export const dynamic = "force-dynamic";
@@ -15,20 +16,13 @@ type SearchParams = {
   offset?: string;
 };
 
-const toNumber = (value: string | undefined, fallback: number) => {
-  if (!value) return fallback;
-  const parsed = Number(value);
-  return Number.isNaN(parsed) ? fallback : parsed;
-};
-
 export default async function PeoplePage({
   searchParams,
 }: {
   searchParams: Promise<SearchParams>;
 }) {
   const resolvedParams = await searchParams;
-  const limit = toNumber(resolvedParams.limit, 10);
-  const offset = toNumber(resolvedParams.offset, 0);
+  const { limit, offset, totalPages, currentPage } = getPagination(resolvedParams);
   const { rows, total } = await listPeople({
     search: resolvedParams.search,
     marca: resolvedParams.marca,
@@ -38,19 +32,12 @@ export default async function PeoplePage({
     offset,
   });
 
-  const totalPages = Math.max(Math.ceil(total / limit), 1);
-  const currentPage = Math.floor(offset / limit) + 1;
-
-  const makePageLink = (nextOffset: number) => {
-    const params = new URLSearchParams();
-    if (resolvedParams.search) params.set("search", resolvedParams.search);
-    if (resolvedParams.marca) params.set("marca", resolvedParams.marca);
-    if (resolvedParams.unidade) params.set("unidade", resolvedParams.unidade);
-    if (resolvedParams.status) params.set("status", resolvedParams.status);
-    params.set("limit", String(limit));
-    params.set("offset", String(nextOffset));
-    return `/people?${params.toString()}`;
-  };
+  const makePageLink = makePageLinkBuilder("/people", {
+    search: resolvedParams.search,
+    marca: resolvedParams.marca,
+    unidade: resolvedParams.unidade,
+    status: resolvedParams.status,
+  }, limit);
 
   return (
     <div className="space-y-6">
@@ -71,23 +58,27 @@ export default async function PeoplePage({
         <input
           name="search"
           placeholder="Buscar nome ou chapa"
+          aria-label="Buscar nome ou chapa"
           defaultValue={resolvedParams.search ?? ""}
           className="rounded-md border border-border bg-background px-3 py-2 text-sm"
         />
         <input
           name="marca"
           placeholder="Marca"
+          aria-label="Filtrar por marca"
           defaultValue={resolvedParams.marca ?? ""}
           className="rounded-md border border-border bg-background px-3 py-2 text-sm"
         />
         <input
           name="unidade"
           placeholder="Unidade"
+          aria-label="Filtrar por unidade"
           defaultValue={resolvedParams.unidade ?? ""}
           className="rounded-md border border-border bg-background px-3 py-2 text-sm"
         />
         <select
           name="status"
+          aria-label="Filtrar por status"
           defaultValue={resolvedParams.status ?? ""}
           className="rounded-md border border-border bg-background px-3 py-2 text-sm"
         >
@@ -147,7 +138,7 @@ export default async function PeoplePage({
 
       <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
         <span className="text-muted-foreground">
-          Página {currentPage} de {totalPages} · {total} registros
+          Página {currentPage} de {totalPages(total)} · {total} registros
         </span>
         <div className="flex items-center gap-2">
           <Button

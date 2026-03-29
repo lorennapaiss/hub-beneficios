@@ -125,7 +125,9 @@ const sendEmail = async (
     return;
   }
 
-  console.log("[reminder] DEV email", { to, cc, subject });
+  if (process.env.NODE_ENV === "development") {
+    console.log("[reminder] DEV email", { to, cc, subject });
+  }
 };
 
 export async function POST(request: Request) {

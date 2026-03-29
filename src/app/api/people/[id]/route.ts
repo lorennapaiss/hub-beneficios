@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions, isAllowedEmail } from "@/lib/auth";
+import { requireAllowedUser, getActorEmail, handleApiError } from "@/server/api-utils";
 import { PersonInputSchema } from "@/lib/schemas/person";
 import { getPersonById, updatePerson } from "@/server/people";
 import { checkRateLimit } from "@/server/rate-limit";
@@ -21,13 +20,9 @@ const resolveId = async (request: Request, params: RouteParams["params"]) => {
   return pathname.split("/").pop() ?? "";
 };
 
-const getActorEmail = (email?: string | null) => email ?? "unknown";
-
 export async function GET(request: Request, { params }: RouteParams) {
-  const session = await getServerSession(authOptions);
-  if (!isAllowedEmail(session?.user?.email)) {
-    return NextResponse.json({ ok: false, error: "Acesso negado." }, { status: 403 });
-  }
+  const { response } = await requireAllowedUser();
+  if (response) return response;
 
   try {
     const id = (await resolveId(request, params)).trim();
@@ -43,19 +38,13 @@ export async function GET(request: Request, { params }: RouteParams) {
     }
     return NextResponse.json({ ok: true, data: person });
   } catch (error) {
-    console.error("Erro ao buscar pessoa.", error);
-    return NextResponse.json(
-      { ok: false, error: "Erro ao buscar pessoa." },
-      { status: 500 }
-    );
+    return handleApiError(error, "people:get");
   }
 }
 
 export async function PUT(request: Request, { params }: RouteParams) {
-  const session = await getServerSession(authOptions);
-  if (!isAllowedEmail(session?.user?.email)) {
-    return NextResponse.json({ ok: false, error: "Acesso negado." }, { status: 403 });
-  }
+  const { session, response } = await requireAllowedUser();
+  if (response) return response;
 
   const rate = checkRateLimit(request, {
     key: "people:update",
@@ -83,11 +72,10 @@ export async function PUT(request: Request, { params }: RouteParams) {
     const person = await updatePerson(
       id,
       parsed.data,
-      getActorEmail(session?.user?.email)
+      getActorEmail(session)
     );
     return NextResponse.json({ ok: true, data: person });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Erro ao atualizar pessoa.";
-    return NextResponse.json({ ok: false, error: message }, { status: 400 });
+    return handleApiError(error, "people:update");
   }
 }

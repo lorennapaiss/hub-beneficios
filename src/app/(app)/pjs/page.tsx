@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
+import { toNumber } from "@/lib/pagination";
 import { PjImportDialog } from "@/components/pjs/pj-import-dialog";
 import { PjSummaryCards } from "@/components/pjs/pj-summary-cards";
 import { listPjs } from "@/server/pjs";
@@ -20,12 +21,6 @@ type SearchParams = {
   benefit_status?: string;
   limit?: string;
   offset?: string;
-};
-
-const toNumber = (value: string | undefined, fallback: number) => {
-  if (!value) return fallback;
-  const parsed = Number(value);
-  return Number.isNaN(parsed) ? fallback : parsed;
 };
 
 export default async function PjsPage({
@@ -101,11 +96,13 @@ export default async function PjsPage({
         <input
           name="search"
           placeholder="Nome, CPF, CNPJ ou ID"
+          aria-label="Nome, CPF, CNPJ ou ID"
           defaultValue={resolvedParams.search ?? ""}
           className="rounded-md border border-border bg-background px-3 py-2 text-sm"
         />
         <select
           name="status_vinculo"
+          aria-label="Status vinculo"
           defaultValue={resolvedParams.status_vinculo ?? ""}
           className="rounded-md border border-border bg-background px-3 py-2 text-sm"
         >
@@ -118,29 +115,34 @@ export default async function PjsPage({
         <input
           name="marca"
           placeholder="Marca"
+          aria-label="Marca"
           defaultValue={resolvedParams.marca ?? ""}
           className="rounded-md border border-border bg-background px-3 py-2 text-sm"
         />
         <input
           name="area"
           placeholder="Area"
+          aria-label="Area"
           defaultValue={resolvedParams.area ?? ""}
           className="rounded-md border border-border bg-background px-3 py-2 text-sm"
         />
         <input
           name="gestor_responsavel"
           placeholder="Gestor"
+          aria-label="Gestor"
           defaultValue={resolvedParams.gestor_responsavel ?? ""}
           className="rounded-md border border-border bg-background px-3 py-2 text-sm"
         />
         <input
           name="centro_custo"
           placeholder="Centro de custo"
+          aria-label="Centro de custo"
           defaultValue={resolvedParams.centro_custo ?? ""}
           className="rounded-md border border-border bg-background px-3 py-2 text-sm"
         />
         <select
           name="status_documental"
+          aria-label="Status documental"
           defaultValue={resolvedParams.status_documental ?? ""}
           className="rounded-md border border-border bg-background px-3 py-2 text-sm"
         >
@@ -151,6 +153,7 @@ export default async function PjsPage({
         </select>
         <select
           name="benefit_status"
+          aria-label="Status beneficio"
           defaultValue={resolvedParams.benefit_status ?? ""}
           className="rounded-md border border-border bg-background px-3 py-2 text-sm"
         >

@@ -1,23 +1,17 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions, isAllowedEmail } from "@/lib/auth";
 import { PjInputSchema } from "@/lib/schemas/pj";
 import { createPj, listPjs } from "@/server/pjs";
 import { checkRateLimit } from "@/server/rate-limit";
-
-const parseNumber = (value: string | null, fallback: number) => {
-  if (!value) return fallback;
-  const parsed = Number(value);
-  return Number.isNaN(parsed) ? fallback : parsed;
-};
-
-const getActorEmail = (email?: string | null) => email ?? "unknown";
+import {
+  requireAllowedUser,
+  getActorEmail,
+  parseNumber,
+  handleApiError,
+} from "@/server/api-utils";
 
 export async function GET(request: Request) {
-  const session = await getServerSession(authOptions);
-  if (!isAllowedEmail(session?.user?.email)) {
-    return NextResponse.json({ ok: false, error: "Acesso negado." }, { status: 403 });
-  }
+  const { response } = await requireAllowedUser();
+  if (response) return response;
 
   const { searchParams } = new URL(request.url);
   const search = searchParams.get("search") ?? undefined;
@@ -53,16 +47,13 @@ export async function GET(request: Request) {
       offset,
     });
   } catch (error) {
-    console.error("Erro ao listar PJs.", error);
-    return NextResponse.json({ ok: false, error: "Erro ao listar PJs." }, { status: 500 });
+    return handleApiError(error, "pjs");
   }
 }
 
 export async function POST(request: Request) {
-  const session = await getServerSession(authOptions);
-  if (!isAllowedEmail(session?.user?.email)) {
-    return NextResponse.json({ ok: false, error: "Acesso negado." }, { status: 403 });
-  }
+  const { session, response } = await requireAllowedUser();
+  if (response) return response;
 
   const rate = checkRateLimit(request, {
     key: "pjs:create",
@@ -86,7 +77,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const pj = await createPj(parsed.data, getActorEmail(session?.user?.email));
+    const pj = await createPj(parsed.data, getActorEmail(session));
     return NextResponse.json({ ok: true, data: pj }, { status: 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Erro ao criar PJ.";

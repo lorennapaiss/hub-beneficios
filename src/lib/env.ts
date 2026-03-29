@@ -58,84 +58,48 @@ if (!parsed.success) {
   }
 }
 
+const validatedData = parsed.success ? parsed.data : undefined;
+
+if (!validatedData && !isBuildPhase) {
+  throw new Error("Env validation failed and not in build phase.");
+}
+
+const get = <K extends keyof z.infer<typeof EnvSchema>>(key: K) =>
+  validatedData?.[key] ?? (process.env[key] as string | undefined);
+
 export const env = {
-  ...(parsed.success
-    ? parsed.data
-    : (process.env as unknown as z.infer<typeof EnvSchema>)),
-  GOOGLE_PRIVATE_KEY: (parsed.success
-    ? parsed.data.GOOGLE_PRIVATE_KEY
-    : process.env.GOOGLE_PRIVATE_KEY ?? ""
-  ).replace(/\\n/g, "\n"),
-  LOW_BALANCE_THRESHOLD:
-    (parsed.success ? parsed.data.LOW_BALANCE_THRESHOLD : process.env.LOW_BALANCE_THRESHOLD) ??
-    "0",
+  ...(validatedData ?? (process.env as unknown as z.infer<typeof EnvSchema>)),
+  GOOGLE_PRIVATE_KEY: (get("GOOGLE_PRIVATE_KEY") ?? "").replace(/\\n/g, "\n"),
+  LOW_BALANCE_THRESHOLD: get("LOW_BALANCE_THRESHOLD") ?? "0",
   INDICATORS_SHEETS_ID:
-    (parsed.success ? parsed.data.INDICATORS_SHEETS_ID : process.env.INDICATORS_SHEETS_ID) ??
-    (parsed.success ? parsed.data.PAYMENTS_SHEETS_ID : process.env.PAYMENTS_SHEETS_ID) ??
-    (parsed.success ? parsed.data.SHEETS_SPREADSHEET_ID : process.env.SHEETS_SPREADSHEET_ID) ??
-    "",
+    get("INDICATORS_SHEETS_ID") ?? get("PAYMENTS_SHEETS_ID") ?? get("SHEETS_SPREADSHEET_ID") ?? "",
   INDICATORS_HEALTH_SHEET_NAME:
-    (parsed.success
-      ? parsed.data.INDICATORS_HEALTH_SHEET_NAME
-      : process.env.INDICATORS_HEALTH_SHEET_NAME) ?? "BASE DEMONSTRATIVO",
+    get("INDICATORS_HEALTH_SHEET_NAME") ?? "BASE DEMONSTRATIVO",
   INDICATORS_HEALTH_COPART_SHEET_NAME:
-    (parsed.success
-      ? parsed.data.INDICATORS_HEALTH_COPART_SHEET_NAME
-      : process.env.INDICATORS_HEALTH_COPART_SHEET_NAME) ?? "COPART",
+    get("INDICATORS_HEALTH_COPART_SHEET_NAME") ?? "COPART",
   INDICATORS_HEALTH_DISCOUNT_SHEET_NAME:
-    (parsed.success
-      ? parsed.data.INDICATORS_HEALTH_DISCOUNT_SHEET_NAME
-      : process.env.INDICATORS_HEALTH_DISCOUNT_SHEET_NAME) ?? "DESCONTOS MENSALIDADE",
+    get("INDICATORS_HEALTH_DISCOUNT_SHEET_NAME") ?? "DESCONTOS MENSALIDADE",
   INDICATORS_HEALTH_COPART_DISCOUNT_SHEET_NAME:
-    (parsed.success
-      ? parsed.data.INDICATORS_HEALTH_COPART_DISCOUNT_SHEET_NAME
-      : process.env.INDICATORS_HEALTH_COPART_DISCOUNT_SHEET_NAME) ?? "DESCONTOS COPART",
+    get("INDICATORS_HEALTH_COPART_DISCOUNT_SHEET_NAME") ?? "DESCONTOS COPART",
   INDICATORS_HEALTH_SHEETS_ID:
-    (parsed.success
-      ? parsed.data.INDICATORS_HEALTH_SHEETS_ID
-      : process.env.INDICATORS_HEALTH_SHEETS_ID) ??
-    (parsed.success ? parsed.data.INDICATORS_SHEETS_ID : process.env.INDICATORS_SHEETS_ID) ??
-    "",
+    get("INDICATORS_HEALTH_SHEETS_ID") ?? get("INDICATORS_SHEETS_ID") ?? "",
   INDICATORS_DENTAL_SHEET_NAME:
-    (parsed.success
-      ? parsed.data.INDICATORS_DENTAL_SHEET_NAME
-      : process.env.INDICATORS_DENTAL_SHEET_NAME) ?? "indicadores_odontologico",
+    get("INDICATORS_DENTAL_SHEET_NAME") ?? "indicadores_odontologico",
   INDICATORS_DENTAL_SHEETS_ID:
-    (parsed.success
-      ? parsed.data.INDICATORS_DENTAL_SHEETS_ID
-      : process.env.INDICATORS_DENTAL_SHEETS_ID) ??
-    (parsed.success ? parsed.data.INDICATORS_SHEETS_ID : process.env.INDICATORS_SHEETS_ID) ??
-    "",
+    get("INDICATORS_DENTAL_SHEETS_ID") ?? get("INDICATORS_SHEETS_ID") ?? "",
   INDICATORS_TRANSPORT_SHEET_NAME:
-    (parsed.success
-      ? parsed.data.INDICATORS_TRANSPORT_SHEET_NAME
-      : process.env.INDICATORS_TRANSPORT_SHEET_NAME) ?? "indicadores_vale_transporte",
+    get("INDICATORS_TRANSPORT_SHEET_NAME") ?? "indicadores_vale_transporte",
   INDICATORS_TRANSPORT_SHEETS_ID:
-    (parsed.success
-      ? parsed.data.INDICATORS_TRANSPORT_SHEETS_ID
-      : process.env.INDICATORS_TRANSPORT_SHEETS_ID) ??
-    (parsed.success ? parsed.data.INDICATORS_SHEETS_ID : process.env.INDICATORS_SHEETS_ID) ??
-    "",
+    get("INDICATORS_TRANSPORT_SHEETS_ID") ?? get("INDICATORS_SHEETS_ID") ?? "",
   INDICATORS_MEAL_SHEET_NAME:
-    (parsed.success
-      ? parsed.data.INDICATORS_MEAL_SHEET_NAME
-      : process.env.INDICATORS_MEAL_SHEET_NAME) ?? "indicadores_vale_refeicao",
+    get("INDICATORS_MEAL_SHEET_NAME") ?? "indicadores_vale_refeicao",
   INDICATORS_MEAL_SHEETS_ID:
-    (parsed.success
-      ? parsed.data.INDICATORS_MEAL_SHEETS_ID
-      : process.env.INDICATORS_MEAL_SHEETS_ID) ??
-    (parsed.success ? parsed.data.INDICATORS_SHEETS_ID : process.env.INDICATORS_SHEETS_ID) ??
-    "",
+    get("INDICATORS_MEAL_SHEETS_ID") ?? get("INDICATORS_SHEETS_ID") ?? "",
   FATURAS_SULAMERICA_BASE_FOLDER_ID:
-    (parsed.success
-      ? parsed.data.FATURAS_SULAMERICA_BASE_FOLDER_ID
-      : process.env.FATURAS_SULAMERICA_BASE_FOLDER_ID) ?? "",
+    get("FATURAS_SULAMERICA_BASE_FOLDER_ID") ?? "",
   COMPETENCIA_FOLDER_PATTERN:
-    (parsed.success
-      ? parsed.data.COMPETENCIA_FOLDER_PATTERN
-      : process.env.COMPETENCIA_FOLDER_PATTERN) ?? "YYYY-MM",
-  ENABLE_SEED:
-    (parsed.success ? parsed.data.ENABLE_SEED : process.env.ENABLE_SEED) ?? "false",
+    get("COMPETENCIA_FOLDER_PATTERN") ?? "YYYY-MM",
+  ENABLE_SEED: get("ENABLE_SEED") ?? "false",
 };
 
 

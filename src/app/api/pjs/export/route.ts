@@ -1,12 +1,9 @@
-import { getServerSession } from "next-auth";
-import { authOptions, isAllowedEmail } from "@/lib/auth";
+import { requireAllowedUser } from "@/server/api-utils";
 import { listPjs } from "@/server/pjs";
 
 export async function GET(request: Request) {
-  const session = await getServerSession(authOptions);
-  if (!isAllowedEmail(session?.user?.email)) {
-    return new Response("Acesso negado.", { status: 403 });
-  }
+  const { response } = await requireAllowedUser();
+  if (response) return response;
 
   const { searchParams } = new URL(request.url);
   const result = await listPjs({

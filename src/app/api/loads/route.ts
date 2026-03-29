@@ -1,19 +1,10 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions, isAllowedEmail } from "@/lib/auth";
 import { listLoads } from "@/server/loads";
-
-const parseNumber = (value: string | null, fallback: number) => {
-  if (!value) return fallback;
-  const parsed = Number(value);
-  return Number.isNaN(parsed) ? fallback : parsed;
-};
+import { requireAllowedUser, parseNumber, handleApiError } from "@/server/api-utils";
 
 export async function GET(request: Request) {
-  const session = await getServerSession(authOptions);
-  if (!isAllowedEmail(session?.user?.email)) {
-    return NextResponse.json({ ok: false, error: "Acesso negado." }, { status: 403 });
-  }
+  const { response } = await requireAllowedUser();
+  if (response) return response;
 
   const { searchParams } = new URL(request.url);
   const from = searchParams.get("from") ?? undefined;
@@ -42,10 +33,6 @@ export async function GET(request: Request) {
       offset,
     });
   } catch (error) {
-    console.error("Erro ao listar cargas.", error);
-    return NextResponse.json(
-      { ok: false, error: "Erro ao listar cargas." },
-      { status: 500 }
-    );
+    return handleApiError(error, "loads");
   }
 }

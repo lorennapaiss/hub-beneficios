@@ -1,16 +1,11 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions, isAllowedEmail } from "@/lib/auth";
+import { requireAllowedUser, getActorEmail, handleApiError } from "@/server/api-utils";
 import { importPjsFromCsvBuffer } from "@/server/pj-import";
 import { checkRateLimit } from "@/server/rate-limit";
 
-const getActorEmail = (email?: string | null) => email ?? "unknown";
-
 export async function POST(request: Request) {
-  const session = await getServerSession(authOptions);
-  if (!isAllowedEmail(session?.user?.email)) {
-    return NextResponse.json({ ok: false, error: "Acesso negado." }, { status: 403 });
-  }
+  const { session, response } = await requireAllowedUser();
+  if (response) return response;
 
   const rate = checkRateLimit(request, {
     key: "pjs:import",
@@ -36,10 +31,9 @@ export async function POST(request: Request) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const result = await importPjsFromCsvBuffer(buffer, getActorEmail(session?.user?.email));
+    const result = await importPjsFromCsvBuffer(buffer, getActorEmail(session));
     return NextResponse.json({ ok: true, data: result }, { status: 201 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Erro ao importar CSV.";
-    return NextResponse.json({ ok: false, error: message }, { status: 400 });
+    return handleApiError(error, "pjs:import");
   }
 }

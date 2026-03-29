@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions, isAllowedEmail } from "@/lib/auth";
+import { requireAllowedUser, getActorEmail, handleApiError } from "@/server/api-utils";
 import { PjInputSchema } from "@/lib/schemas/pj";
 import { getPjDetailById, updatePj } from "@/server/pjs";
 import { checkRateLimit } from "@/server/rate-limit";
@@ -21,13 +20,9 @@ const resolveId = async (request: Request, params: RouteParams["params"]) => {
   return pathname.split("/").pop() ?? "";
 };
 
-const getActorEmail = (email?: string | null) => email ?? "unknown";
-
 export async function GET(request: Request, { params }: RouteParams) {
-  const session = await getServerSession(authOptions);
-  if (!isAllowedEmail(session?.user?.email)) {
-    return NextResponse.json({ ok: false, error: "Acesso negado." }, { status: 403 });
-  }
+  const { response } = await requireAllowedUser();
+  if (response) return response;
 
   try {
     const id = (await resolveId(request, params)).trim();
@@ -43,16 +38,13 @@ export async function GET(request: Request, { params }: RouteParams) {
     }
     return NextResponse.json({ ok: true, data: detail });
   } catch (error) {
-    console.error("Erro ao buscar PJ.", error);
-    return NextResponse.json({ ok: false, error: "Erro ao buscar PJ." }, { status: 500 });
+    return handleApiError(error, "pjs:get");
   }
 }
 
 export async function PUT(request: Request, { params }: RouteParams) {
-  const session = await getServerSession(authOptions);
-  if (!isAllowedEmail(session?.user?.email)) {
-    return NextResponse.json({ ok: false, error: "Acesso negado." }, { status: 403 });
-  }
+  const { session, response } = await requireAllowedUser();
+  if (response) return response;
 
   const rate = checkRateLimit(request, {
     key: "pjs:update",
@@ -77,10 +69,9 @@ export async function PUT(request: Request, { params }: RouteParams) {
 
   try {
     const id = (await resolveId(request, params)).trim();
-    const pj = await updatePj(id, parsed.data, getActorEmail(session?.user?.email));
+    const pj = await updatePj(id, parsed.data, getActorEmail(session));
     return NextResponse.json({ ok: true, data: pj });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Erro ao atualizar PJ.";
-    return NextResponse.json({ ok: false, error: message }, { status: 400 });
+    return handleApiError(error, "pjs:update");
   }
 }
