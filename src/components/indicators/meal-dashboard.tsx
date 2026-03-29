@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import { CalendarDays, HandCoins, Users } from "lucide-react";
 import { AiInsightsBox } from "@/components/indicators/ai-insights-box";
+import { TrendChart } from "@/components/indicators/trend-chart";
 import { Select } from "@/components/ui/select";
 import {
   Table,
@@ -229,11 +230,12 @@ export function MealDashboard({ records, mode = "B" }: MealDashboardProps) {
         </Select>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard label="Custo total" value={formatCurrency(stats.custoTotal)} icon={HandCoins} tone="cost" />
-        <MetricCard label="Media mensal" value={formatCurrency(stats.mediaMensal)} icon={CalendarDays} tone="cost" />
-        <MetricCard label="Media por colaborador" value={formatCurrency(stats.mediaPorColaborador)} icon={Users} tone="people" />
-        <MetricCard label="Colaboradores ativos" value={String(stats.colaboradoresAtivos)} icon={Users} tone="people" />
+      {/* KPIs principais */}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard label="Custo total" value={formatCurrency(stats.custoTotal)} icon={HandCoins} tone="cost" primary />
+        <MetricCard label="Média mensal" value={formatCurrency(stats.mediaMensal)} icon={CalendarDays} tone="cost" primary />
+        <MetricCard label="Média por colaborador" value={formatCurrency(stats.mediaPorColaborador)} icon={Users} tone="people" primary />
+        <MetricCard label="Colaboradores ativos" value={String(stats.colaboradoresAtivos)} icon={Users} tone="people" primary />
       </div>
 
       <Tabs defaultValue="geral" className="space-y-4">
@@ -245,16 +247,16 @@ export function MealDashboard({ records, mode = "B" }: MealDashboardProps) {
         <TabsContent value="geral" className="space-y-4">
           <div className="grid gap-4 xl:grid-cols-2">
             <RankList title="Custo por marca (acumulado)" items={stats.custoPorMarca} />
-            <RankList title="Custo por beneficio (acumulado)" items={stats.custoPorBeneficio} />
+            <RankList title="Custo por benefício (acumulado)" items={stats.custoPorBeneficio} />
             <div className="xl:col-span-2">
-              <BarList title="Custo mensal" items={stats.custoMensal} />
+              <TrendChart title="Custo mensal" data={stats.custoMensal} type="area" formatValue={formatCurrencyCompact} height={180} />
             </div>
           </div>
         </TabsContent>
 
         <TabsContent value="colabs" className="space-y-4">
           <div className="grid gap-4 grid-cols-1">
-            <BarList title="HC mensal" items={stats.hcMensal} numeric />
+            <TrendChart title="Headcount mensal" data={stats.hcMensal} type="line" formatValue={String} />
           </div>
         </TabsContent>
       </Tabs>
@@ -380,11 +382,13 @@ function MetricCard({
   value,
   icon: Icon,
   tone = "neutral",
+  primary = false,
 }: {
   label: string;
   value: string;
   icon?: LucideIcon;
   tone?: MetricTone;
+  primary?: boolean;
 }) {
   return (
     <div className={`indicator-metric indicator-metric-${tone}`}>
@@ -394,7 +398,7 @@ function MetricCard({
         </div>
       ) : null}
       <p className="indicator-kpi-label mt-1">{label}</p>
-      <p className="mt-1 text-xl font-semibold text-foreground">{value}</p>
+      <p className={`mt-1 font-semibold text-foreground ${primary ? "text-2xl" : "text-lg"}`}>{value}</p>
     </div>
   );
 }

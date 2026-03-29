@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import { CalendarDays, HandCoins, ShieldCheck, Users } from "lucide-react";
 import { AiInsightsBox } from "@/components/indicators/ai-insights-box";
+import { TrendChart } from "@/components/indicators/trend-chart";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
@@ -255,18 +256,20 @@ export function DentalDashboard({ records, mode = "B" }: DentalDashboardProps) {
         />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard label="Custo acumulado" value={formatCurrency(metrics.custoAcumulado)} icon={HandCoins} tone="cost" />
-        <MetricCard label="Ativos" value={String(metrics.ativos)} icon={ShieldCheck} tone="people" />
-        <MetricCard label="Custo medio por vida" value={formatCurrency(metrics.custoMedioPorVida)} icon={Users} tone="people" />
-        <MetricCard label="Custo medio por mes" value={formatCurrency(metrics.custoMedioPorMes)} icon={CalendarDays} tone="cost" />
+      {/* KPIs principais */}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard label="Custo acumulado" value={formatCurrency(metrics.custoAcumulado)} icon={HandCoins} tone="cost" primary />
+        <MetricCard label="Vidas ativas" value={String(metrics.ativos)} icon={ShieldCheck} tone="people" primary />
+        <MetricCard label="Custo médio por vida" value={formatCurrency(metrics.custoMedioPorVida)} icon={Users} tone="people" primary />
+        <MetricCard label="Custo médio por mês" value={formatCurrency(metrics.custoMedioPorMes)} icon={CalendarDays} tone="cost" primary />
       </div>
 
+      {/* Tendência temporal */}
       <div className="grid gap-4 xl:grid-cols-2">
-        <BarList title="Nº de vidas ativas" items={metrics.mensalVidasAtivas} max={maxFromList(metrics.mensalVidasAtivas)} numeric />
-        <BarList title="Nº de titulares ativos" items={metrics.mensalTitularesAtivos} max={maxFromList(metrics.mensalTitularesAtivos)} numeric />
+        <TrendChart title="Vidas ativas por mês" data={metrics.mensalVidasAtivas} type="line" formatValue={String} />
+        <TrendChart title="Titulares ativos por mês" data={metrics.mensalTitularesAtivos} type="line" formatValue={String} />
         <div className="xl:col-span-2">
-          <BarList title="Custo mensal" items={metrics.custoMensal} max={maxFromList(metrics.custoMensal)} />
+          <TrendChart title="Custo mensal" data={metrics.custoMensal} type="area" formatValue={formatCurrencyCompact} height={180} />
         </div>
       </div>
 
@@ -347,11 +350,13 @@ function MetricCard({
   value,
   icon: Icon,
   tone = "neutral",
+  primary = false,
 }: {
   label: string;
   value: string;
   icon?: LucideIcon;
   tone?: MetricTone;
+  primary?: boolean;
 }) {
   return (
     <div className={`indicator-metric indicator-metric-${tone}`}>
@@ -361,7 +366,7 @@ function MetricCard({
         </div>
       ) : null}
       <p className="indicator-kpi-label mt-1">{label}</p>
-      <p className="mt-1 text-xl font-semibold text-foreground">{value}</p>
+      <p className={`mt-1 font-semibold text-foreground ${primary ? "text-2xl" : "text-lg"}`}>{value}</p>
     </div>
   );
 }

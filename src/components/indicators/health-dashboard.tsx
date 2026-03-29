@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import { Activity, BadgePercent, HandCoins, HeartPulse, Users } from "lucide-react";
 import { AiInsightsBox } from "@/components/indicators/ai-insights-box";
+import { TrendChart } from "@/components/indicators/trend-chart";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
@@ -276,36 +277,42 @@ export function HealthDashboard({ records, copartRecords, mode = "B" }: HealthDa
         <Input value={person} onChange={(e) => setPerson(e.target.value)} placeholder="Nome/CPF" />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-8">
-        <MetricCard label="Custo Acumulado" value={formatCurrencyCompact(metrics.custoAcumulado)} icon={HandCoins} tone="cost" />
-        <MetricCard label="Nº de Vidas Ativas" value={String(metrics.vidasAtivas)} icon={HeartPulse} tone="people" />
-        <MetricCard label="Total Copart" value={formatCurrencyCompact(metrics.totalCopart)} icon={Activity} tone="cost" />
-        <MetricCard label="Desconto Plano de Saude" value={formatCurrencyCompact(metrics.descontoPlanoSaude)} icon={BadgePercent} tone="percent" />
-        <MetricCard label="Desconto Coparticipacao" value={formatCurrencyCompact(metrics.descontoCopart)} icon={BadgePercent} tone="percent" />
-        <MetricCard label="Custo Medio por Vida" value={formatCurrencyCompact(metrics.custoMedioPorVida)} icon={Users} tone="people" />
-        <MetricCard label="Custo Medio por Vida Pos Desconto" value={formatCurrencyCompact(metrics.custoMedioPorVidaPosDesconto)} icon={BadgePercent} tone="percent" />
-        <MetricCard label="Custo Mensal Copart" value={formatCurrencyCompact(metrics.custoMensalCopart)} icon={HandCoins} tone="cost" />
+      {/* KPIs principais */}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard label="Custo acumulado" value={formatCurrencyCompact(metrics.custoAcumulado)} icon={HandCoins} tone="cost" primary />
+        <MetricCard label="Vidas ativas" value={String(metrics.vidasAtivas)} icon={HeartPulse} tone="people" primary />
+        <MetricCard label="Custo médio por vida" value={formatCurrencyCompact(metrics.custoMedioPorVida)} icon={Users} tone="people" primary />
+        <MetricCard label="Total coparticipação" value={formatCurrencyCompact(metrics.totalCopart)} icon={Activity} tone="cost" primary />
       </div>
 
+      {/* KPIs secundários */}
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard label="Desconto plano de saúde" value={formatCurrencyCompact(metrics.descontoPlanoSaude)} icon={BadgePercent} tone="percent" />
+        <MetricCard label="Desconto coparticipação" value={formatCurrencyCompact(metrics.descontoCopart)} icon={BadgePercent} tone="percent" />
+        <MetricCard label="Custo médio pós desconto" value={formatCurrencyCompact(metrics.custoMedioPorVidaPosDesconto)} icon={BadgePercent} tone="percent" />
+        <MetricCard label="Custo mensal copart" value={formatCurrencyCompact(metrics.custoMensalCopart)} icon={HandCoins} tone="cost" />
+      </div>
+
+      {/* Tendência temporal */}
       <div className="grid gap-4 xl:grid-cols-2">
-        <BarList title="Numero de Vidas por Mes" items={metrics.vidasPorMes} max={maxBar(metrics.vidasPorMes)} numeric />
-        <BarList title="Valor de Mensalidade por Mes" items={metrics.mensalidadePorMes} max={maxBar(metrics.mensalidadePorMes)} />
+        <TrendChart title="Vidas ativas por mês" data={metrics.vidasPorMes} type="line" formatValue={String} />
+        <TrendChart title="Mensalidade mensal" data={metrics.mensalidadePorMes} type="area" formatValue={formatCurrencyCompact} />
         <div className="xl:col-span-2">
-          <BarList title="Valor de Coparticipacao por Mes" items={metrics.valorCopartPorMes} max={maxBar(metrics.valorCopartPorMes)} />
+          <TrendChart title="Coparticipação mensal" data={metrics.valorCopartPorMes} type="area" formatValue={formatCurrencyCompact} height={180} />
         </div>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">
-        <BarList title="Numero de Vidas com Coparticipacao por Mes" items={metrics.vidasCopartPorMes} max={maxBar(metrics.vidasCopartPorMes)} numeric />
-        <RankList title="Mensalidade por Marca" items={metrics.mensalidadePorMarca} max={maxRank(metrics.mensalidadePorMarca)} />
+        <TrendChart title="Vidas com coparticipação por mês" data={metrics.vidasCopartPorMes} type="line" formatValue={String} />
+        <RankList title="Mensalidade por marca" items={metrics.mensalidadePorMarca} max={maxRank(metrics.mensalidadePorMarca)} />
         <div className="xl:col-span-2">
-          <RankList title="Coparticipacao por Marca" items={metrics.copartPorMarca} max={maxRank(metrics.copartPorMarca)} />
+          <RankList title="Coparticipação por marca" items={metrics.copartPorMarca} max={maxRank(metrics.copartPorMarca)} />
         </div>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">
         <div className="xl:col-span-2">
-          <RankList title="Desconto por Marca" items={metrics.descontoPorMarca} max={maxRank(metrics.descontoPorMarca)} />
+          <RankList title="Desconto por marca" items={metrics.descontoPorMarca} max={maxRank(metrics.descontoPorMarca)} />
         </div>
         <div className="xl:col-span-2">
           <MetricCard label="Registros filtrados" value={`${filteredPremiumRows.length} mensalidades | ${filteredCopart.length} copart`} icon={Users} tone="neutral" />
@@ -324,11 +331,13 @@ function MetricCard({
   value,
   icon: Icon,
   tone = "neutral",
+  primary = false,
 }: {
   label: string;
   value: string;
   icon?: LucideIcon;
   tone?: MetricTone;
+  primary?: boolean;
 }) {
   return (
     <div className={`indicator-metric indicator-metric-${tone}`}>
@@ -338,7 +347,7 @@ function MetricCard({
         </div>
       ) : null}
       <p className="indicator-kpi-label mt-1">{label}</p>
-      <p className="mt-1 text-xl font-semibold text-foreground">{value}</p>
+      <p className={`mt-1 font-semibold text-foreground ${primary ? "text-2xl" : "text-lg"}`}>{value}</p>
     </div>
   );
 }
