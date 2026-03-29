@@ -53,7 +53,7 @@ export function Topbar({ mobileNavOpen, onMobileNavOpenChange }: TopbarProps) {
               Operações do time de benefícios
             </div>
           </div>
-          <span className="hidden rounded-full border border-border/80 bg-card px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground sm:inline-flex">
+          <span className="hidden rounded-full border border-[#4DBFB3]/30 bg-[#4DBFB3]/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#0C3B6F] sm:inline-flex">
             Operação interna
           </span>
         </div>

@@ -104,7 +104,7 @@ export function SidebarNav({
             isCollapsed ? "justify-center" : "min-w-0 flex-1 gap-3"
           )}
         >
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-slate-100 via-slate-200 to-slate-300 text-slate-900 shadow-sm">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#4DBFB3] to-[#0C3B6F] font-semibold text-white shadow-sm">
             HB
           </div>
 

@@ -10,19 +10,19 @@ const highlights = [
     title: "Pagamentos",
     description: "Controle completo de boletos e vencimentos.",
     icon: Wallet,
-    gradient: "from-orange-300/70 via-orange-100 to-white",
+    gradient: "from-[#F9A825]/30 via-[#FFB347]/10 to-white",
   },
   {
     title: "Cartões provisórios",
     description: "Emissão, cargas e alocações em um fluxo.",
     icon: CreditCard,
-    gradient: "from-sky-300/70 via-sky-100 to-white",
+    gradient: "from-[#4DBFB3]/35 via-[#C8E9E5]/30 to-white",
   },
   {
     title: "Governança",
     description: "Alertas e auditoria automatizados.",
     icon: ShieldCheck,
-    gradient: "from-emerald-200/70 via-emerald-50 to-white",
+    gradient: "from-[#0C3B6F]/15 via-[#4A90E2]/10 to-white",
   },
 ];
 
@@ -31,16 +31,16 @@ export default function HomePage() {
     <div className="relative min-h-screen overflow-hidden px-4">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute inset-0 bg-grid opacity-40" />
-        <div className="absolute -left-24 top-10 h-72 w-72 rounded-full bg-sky-300/30 blur-3xl" />
-        <div className="absolute -right-16 top-8 h-80 w-80 rounded-full bg-orange-300/35 blur-3xl" />
-        <div className="absolute bottom-0 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-emerald-200/30 blur-3xl" />
+        <div className="absolute -left-24 top-10 h-72 w-72 rounded-full bg-[#4DBFB3]/20 blur-3xl" />
+        <div className="absolute -right-16 top-8 h-80 w-80 rounded-full bg-[#F9A825]/20 blur-3xl" />
+        <div className="absolute bottom-0 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-[#0C3B6F]/10 blur-3xl" />
       </div>
 
       <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col justify-center gap-14 py-16">
         <section className="grid gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
           <div className="space-y-6">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/50 bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">
-              <Sparkles className="size-3 text-orange-500" />
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#4DBFB3]/30 bg-[#4DBFB3]/8 px-3 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-[#0C3B6F]">
+              <Sparkles className="size-3 text-[#F9A825]" />
               Hub de benefícios Raiz Educação
             </div>
             <h1 className="font-display text-4xl font-semibold text-slate-900 md:text-5xl">
@@ -93,12 +93,12 @@ export default function HomePage() {
             >
               <defs>
                 <linearGradient id="hubGlow" x1="0" y1="0" x2="1" y2="1">
-                  <stop offset="0%" stopColor="#60A5FA" stopOpacity="0.35" />
-                  <stop offset="100%" stopColor="#FDBA74" stopOpacity="0.4" />
+                  <stop offset="0%" stopColor="#4DBFB3" stopOpacity="0.35" />
+                  <stop offset="100%" stopColor="#F9A825" stopOpacity="0.4" />
                 </linearGradient>
               </defs>
               <circle cx="180" cy="180" r="140" fill="url(#hubGlow)" />
-              <circle cx="120" cy="120" r="60" fill="#A7F3D0" fillOpacity="0.35" />
+              <circle cx="120" cy="120" r="60" fill="#C8E9E5" fillOpacity="0.45" />
             </svg>
             <div className="glass-card shadow-glow relative w-full max-w-md rounded-[32px] p-6">
               <div className="flex items-center justify-between">
@@ -110,7 +110,7 @@ export default function HomePage() {
                     Painel operacional
                   </h2>
                 </div>
-                <span className="rounded-full bg-orange-100 px-3 py-1 text-xs font-semibold text-orange-700">
+                <span className="rounded-full bg-[#4DBFB3]/15 px-3 py-1 text-xs font-semibold text-[#0C3B6F]">
                   Atualizado
                 </span>
               </div>
@@ -121,7 +121,7 @@ export default function HomePage() {
                     <span>12</span>
                   </div>
                   <div className="mt-3 h-2 w-full rounded-full bg-slate-100">
-                    <div className="h-2 w-3/5 rounded-full bg-gradient-to-r from-sky-500 to-orange-400" />
+                    <div className="h-2 w-3/5 rounded-full bg-gradient-to-r from-[#4DBFB3] to-[#F9A825]" />
                   </div>
                 </div>
                 <div className="rounded-2xl border border-white/50 bg-white/80 p-4">
@@ -159,19 +159,19 @@ export default function HomePage() {
               title: "Módulo de pagamentos",
               description:
                 "Registro, auditoria e comprovantes organizados em um painel único.",
-              accent: "from-orange-300/60 via-orange-100 to-white",
+              accent: "from-[#F9A825]/35 via-[#FFB347]/15 to-white",
             },
             {
               title: "Módulo de cartões",
               description:
                 "Gestão de cartões provisórios com cargas e eventos auditáveis.",
-              accent: "from-sky-300/60 via-sky-100 to-white",
+              accent: "from-[#4DBFB3]/40 via-[#C8E9E5]/20 to-white",
             },
             {
               title: "Governança em tempo real",
               description:
                 "Indicadores e alertas para o time agir antes do vencimento.",
-              accent: "from-emerald-200/60 via-emerald-50 to-white",
+              accent: "from-[#0C3B6F]/15 via-[#4A90E2]/10 to-white",
             },
           ].map((item) => (
             <div
