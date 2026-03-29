@@ -84,7 +84,7 @@ export default function PaymentDetailPage() {
         </div>
         <div className="flex gap-2">
           <Button
-            className="bg-muted text-foreground hover:bg-muted/80"
+            variant="secondary"
             onClick={() => handleAction("mark-sent")}
             disabled={saving}
           >
@@ -94,7 +94,7 @@ export default function PaymentDetailPage() {
             Marcar como pago
           </Button>
           <Button
-            className="bg-muted text-foreground hover:bg-muted/80"
+            variant="secondary"
             disabled={!payment.drive_link}
             onClick={() => payment.drive_link && window.open(payment.drive_link, "_blank")}
           >

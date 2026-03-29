@@ -1,80 +1,81 @@
 import Link from "next/link";
+import { ArrowRight, BarChart2, CreditCard, FileText, Wallet } from "lucide-react";
+import { PageHeader } from "@/components/page-header";
+import { Button } from "@/components/ui/button";
 
 const features = [
   {
     title: "Controle de Pagamentos",
     description: "Módulo de pagamentos: boletos, status, auditorias e alertas.",
     href: "/beneficios/pagamentos",
-    gradient: "from-orange-400/80 via-orange-200/80 to-amber-50",
+    icon: Wallet,
   },
   {
     title: "Indicadores de custo",
     description:
       "Dashboards de Plano de Saúde, Odontológico, Vale Transporte e Vale Refeição via Google Sheets.",
     href: "/beneficios/indicadores",
-    gradient: "from-emerald-400/80 via-teal-200/70 to-slate-50",
+    icon: BarChart2,
   },
   {
     title: "Políticas e Regras",
     description: "Defina fornecedores, categorias e lembretes.",
     href: "/beneficios/pagamentos/config",
-    gradient: "from-sky-400/80 via-sky-200/70 to-slate-50",
+    icon: FileText,
   },
   {
     title: "Cartões provisórios",
     description: "Módulo de cartões: emissão, cargas e alocações.",
     href: "/cards",
-    gradient: "from-blue-400/70 via-blue-200/70 to-slate-50",
+    icon: CreditCard,
   },
 ];
 
 export default function BeneficiosPage() {
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col gap-3">
-        <p className="text-xs font-semibold uppercase tracking-[0.3em] text-orange-500">
-          Hub interno
-        </p>
-        <h1 className="text-3xl font-semibold text-slate-900">Benefícios e processos</h1>
-        <p className="max-w-2xl text-sm text-muted-foreground">
-          Centralize as frentes do time de benefícios em um único painel.
-          Pagamentos, indicadores e cartões provisórios são módulos distintos.
-        </p>
+    <div className="page-section">
+      <PageHeader
+        eyebrow="Benefícios"
+        title="Benefícios e processos"
+        description="Centralize as frentes do time de benefícios em um único painel. Pagamentos, indicadores e cartões provisórios são módulos distintos."
+      />
+
+      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+        {features.map((feature) => {
+          const Icon = feature.icon;
+          return (
+            <Link
+              key={feature.title}
+              href={feature.href}
+              className="section-panel subtle-ring group p-6 transition hover:-translate-y-0.5"
+            >
+              <div className="flex size-11 items-center justify-center rounded-2xl border border-border/80 bg-muted/25 text-primary">
+                <Icon className="size-5" />
+              </div>
+              <h2 className="mt-5 text-base font-semibold text-foreground">{feature.title}</h2>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">{feature.description}</p>
+              <span className="mt-5 inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+                Abrir módulo
+                <ArrowRight className="size-3 transition group-hover:translate-x-1" />
+              </span>
+            </Link>
+          );
+        })}
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
-        {features.map((feature) => (
-          <Link
-            key={feature.title}
-            href={feature.href}
-            className="group glass-card rounded-3xl p-6 transition hover:-translate-y-1 hover:shadow-md"
-          >
-            <div className={`h-20 rounded-2xl bg-gradient-to-br ${feature.gradient}`} />
-            <h2 className="mt-4 text-lg font-semibold text-slate-900">{feature.title}</h2>
-            <p className="mt-2 text-sm text-muted-foreground">{feature.description}</p>
-            <span className="mt-4 inline-flex text-xs font-semibold text-orange-500">
-              Abrir módulo
-            </span>
-          </Link>
-        ))}
-      </div>
-
-      <div className="glass-card rounded-3xl p-6">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      <div className="section-panel subtle-ring p-6">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h3 className="text-lg font-semibold text-slate-900">
+            <h3 className="text-base font-semibold text-foreground">
               Módulos separados, experiência única
             </h3>
-            <p className="text-sm text-muted-foreground">
+            <p className="mt-1 text-sm text-muted-foreground">
               Todos os fluxos de benefícios ficam no mesmo hub para facilitar a rotina do time.
             </p>
           </div>
-          <Link
-            href="/beneficios/indicadores"
-            className="rounded-md bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
-          >
-            Abrir indicadores
-          </Link>
+          <Button asChild>
+            <Link href="/beneficios/indicadores">Abrir indicadores</Link>
+          </Button>
         </div>
       </div>
     </div>

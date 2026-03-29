@@ -387,7 +387,7 @@ export default function PaymentForm({
 
       <div className="flex justify-end gap-3">
         <Button
-          className="bg-muted text-foreground hover:bg-muted/80"
+          variant="secondary"
           type="button"
           disabled={saving}
           onClick={() => form.reset()}

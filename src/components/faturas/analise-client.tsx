@@ -414,47 +414,29 @@ export function AnaliseFaturasClient({ isAdmin }: AnaliseClientProps) {
       </Card>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardTitle>Vidas ativas</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-semibold">
-              {formatCount(resumo?.total_vidas ?? 0)}
-            </div>
-            <p className="text-sm text-muted-foreground">Total no mês</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Custo total</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-semibold">
-              {formatCurrency(resumo?.total_custo ?? 0)}
-            </div>
-            <p className="text-sm text-muted-foreground">Somatório das faturas</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Contratos</CardTitle>
-          </CardHeader>
-          <CardContent className="flex items-center justify-between">
+        <div className="kpi-card">
+          <p className="page-stat-label">Vidas ativas</p>
+          <p className="mt-3 page-stat-value">{formatCount(resumo?.total_vidas ?? 0)}</p>
+          <p className="mt-1 text-sm text-muted-foreground">Total no mês</p>
+        </div>
+        <div className="kpi-card">
+          <p className="page-stat-label">Custo total</p>
+          <p className="mt-3 page-stat-value">{formatCurrency(resumo?.total_custo ?? 0)}</p>
+          <p className="mt-1 text-sm text-muted-foreground">Somatório das faturas</p>
+        </div>
+        <div className="kpi-card">
+          <p className="page-stat-label">Contratos</p>
+          <div className="mt-3 flex items-end justify-between gap-3">
             <div>
-              <div className="text-2xl font-semibold">
-                {formatCount(resumo?.contratos_ok ?? 0)}
-              </div>
-              <p className="text-sm text-muted-foreground">OK</p>
+              <p className="page-stat-value">{formatCount(resumo?.contratos_ok ?? 0)}</p>
+              <p className="text-xs text-muted-foreground">OK</p>
             </div>
             <div className="text-right">
-              <div className="text-2xl font-semibold">
-                {formatCount(resumo?.contratos_erro ?? 0)}
-              </div>
-              <p className="text-sm text-muted-foreground">Erro</p>
+              <p className="page-stat-value">{formatCount(resumo?.contratos_erro ?? 0)}</p>
+              <p className="text-xs text-muted-foreground">Erro</p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
       <Card>

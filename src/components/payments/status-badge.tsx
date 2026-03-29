@@ -9,8 +9,18 @@ const statusStyles: Record<string, string> = {
   ATRASADO: "border-rose-200 bg-rose-50 text-rose-700",
 };
 
+const statusLabels: Record<string, string> = {
+  RASCUNHO: "Rascunho",
+  EM_ACOMPANHAMENTO: "Em acompanhamento",
+  AGUARDANDO_PAGAMENTO: "Aguardando",
+  PAGO: "Pago",
+  ATRASADO: "Atrasado",
+};
+
 export default function StatusBadge({ status }: { status: string }) {
   return (
-    <Badge className={cn("uppercase tracking-wide", statusStyles[status] ?? "")}>{status}</Badge>
+    <Badge className={cn("font-medium", statusStyles[status] ?? "")}>
+      {statusLabels[status] ?? status}
+    </Badge>
   );
 }
