@@ -1,8 +1,21 @@
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { Plus, Search, UserRound } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { getPagination, makePageLinkBuilder } from "@/lib/pagination";
 import { listPeople } from "@/server/people";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -32,109 +45,138 @@ export default async function PeoplePage({
     offset,
   });
 
-  const makePageLink = makePageLinkBuilder("/people", {
-    search: resolvedParams.search,
-    marca: resolvedParams.marca,
-    unidade: resolvedParams.unidade,
-    status: resolvedParams.status,
-  }, limit);
+  const makePageLink = makePageLinkBuilder(
+    "/people",
+    {
+      search: resolvedParams.search,
+      marca: resolvedParams.marca,
+      unidade: resolvedParams.unidade,
+      status: resolvedParams.status,
+    },
+    limit,
+  );
 
   return (
-    <div className="space-y-6">
+    <div className="page-section">
       <PageHeader
+        eyebrow="Cadastro mestre"
         title="Pessoas"
-        description="Cadastro de colaboradores para alocações."
+        description="Gestão de colaboradores com filtros de operação e acesso rápido a edição cadastral."
         actions={
-          <Button asChild>
-            <Link href="/people/new">Nova pessoa</Link>
-          </Button>
+          <>
+            <Badge>{total} registros</Badge>
+            <Button asChild>
+              <Link href="/people/new">
+                <Plus className="size-4" />
+                Nova pessoa
+              </Link>
+            </Button>
+          </>
         }
       />
 
-      <form
-        method="get"
-        className="grid gap-3 rounded-lg border border-border bg-card p-4 md:grid-cols-5"
-      >
-        <input
-          name="search"
-          placeholder="Buscar nome ou chapa"
-          aria-label="Buscar nome ou chapa"
-          defaultValue={resolvedParams.search ?? ""}
-          className="rounded-md border border-border bg-background px-3 py-2 text-sm"
-        />
-        <input
-          name="marca"
-          placeholder="Marca"
-          aria-label="Filtrar por marca"
-          defaultValue={resolvedParams.marca ?? ""}
-          className="rounded-md border border-border bg-background px-3 py-2 text-sm"
-        />
-        <input
-          name="unidade"
-          placeholder="Unidade"
-          aria-label="Filtrar por unidade"
-          defaultValue={resolvedParams.unidade ?? ""}
-          className="rounded-md border border-border bg-background px-3 py-2 text-sm"
-        />
-        <select
-          name="status"
-          aria-label="Filtrar por status"
-          defaultValue={resolvedParams.status ?? ""}
-          className="rounded-md border border-border bg-background px-3 py-2 text-sm"
-        >
-          <option value="">Status</option>
-          <option value="ATIVO">ATIVO</option>
-          <option value="INATIVO">INATIVO</option>
-        </select>
-        <Button type="submit">Filtrar</Button>
+      <form method="get" className="toolbar-panel">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[1.4fr_1fr_1fr_0.8fr_auto]">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              name="search"
+              placeholder="Buscar por nome ou chapa"
+              defaultValue={resolvedParams.search ?? ""}
+              className="pl-9"
+            />
+          </div>
+          <Input
+            name="marca"
+            placeholder="Filtrar por marca"
+            defaultValue={resolvedParams.marca ?? ""}
+          />
+          <Input
+            name="unidade"
+            placeholder="Filtrar por unidade"
+            defaultValue={resolvedParams.unidade ?? ""}
+          />
+          <Select name="status" defaultValue={resolvedParams.status ?? ""}>
+            <option value="">Todos os status</option>
+            <option value="ATIVO">Ativo</option>
+            <option value="INATIVO">Inativo</option>
+          </Select>
+          <div className="flex gap-2">
+            <Button type="submit" className="flex-1">
+              Aplicar
+            </Button>
+            <Button asChild variant="outline" className="flex-1">
+              <Link href="/people">Limpar</Link>
+            </Button>
+          </div>
+        </div>
       </form>
-      <div className="flex justify-end">
-        <Button asChild variant="outline" size="sm">
-          <Link href="/people">Limpar filtros</Link>
-        </Button>
-      </div>
 
-      <div className="overflow-hidden rounded-lg border border-border bg-card">
-        <table className="w-full text-sm">
-          <thead className="border-b border-border bg-muted/40 text-left">
-            <tr>
-              <th className="px-4 py-3 font-medium">Nome</th>
-              <th className="px-4 py-3 font-medium">Chapa</th>
-              <th className="px-4 py-3 font-medium">Marca</th>
-              <th className="px-4 py-3 font-medium">Unidade</th>
-              <th className="px-4 py-3 font-medium">Status</th>
-              <th className="px-4 py-3 text-right font-medium">Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.length === 0 ? (
-              <tr>
-                <td className="px-4 py-6 text-muted-foreground" colSpan={6}>
-                  Nenhuma pessoa encontrada.
-                </td>
-              </tr>
-            ) : (
-              rows.map((person) => (
-                <tr key={person.person_id} className="border-b border-border">
-                  <td className="px-4 py-3">{person.nome}</td>
-                  <td className="px-4 py-3">{person.chapa_matricula}</td>
-                  <td className="px-4 py-3">{person.marca}</td>
-                  <td className="px-4 py-3">{person.unidade}</td>
-                  <td className="px-4 py-3">{person.status}</td>
-                  <td className="px-4 py-3 text-right">
-                    <Link
-                      className="text-sm font-medium text-primary hover:underline"
-                      href={`/people/${person.person_id}/edit`}
+      <section className="table-panel">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/70 px-5 py-4">
+          <div>
+            <h2 className="text-base font-semibold text-foreground">Base de colaboradores</h2>
+            <p className="text-sm text-muted-foreground">
+              Página {currentPage} de {totalPages(total)}
+            </p>
+          </div>
+          <Badge className="bg-background">{total} resultados</Badge>
+        </div>
+
+        {rows.length === 0 ? (
+          <div className="p-5">
+            <EmptyState
+              icon={UserRound}
+              title="Nenhuma pessoa encontrada"
+              description="Revise os filtros aplicados ou cadastre um novo colaborador para iniciar a operação."
+              action={
+                <Button asChild>
+                  <Link href="/people/new">Cadastrar pessoa</Link>
+                </Button>
+              }
+            />
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nome</TableHead>
+                <TableHead>Chapa</TableHead>
+                <TableHead>Marca</TableHead>
+                <TableHead>Unidade</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((person) => (
+                <TableRow key={person.person_id}>
+                  <TableCell className="font-medium text-foreground">{person.nome}</TableCell>
+                  <TableCell>{person.chapa_matricula}</TableCell>
+                  <TableCell>{person.marca}</TableCell>
+                  <TableCell>{person.unidade}</TableCell>
+                  <TableCell>
+                    <Badge
+                      className={
+                        person.status === "ATIVO"
+                          ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                          : "border-slate-200 bg-slate-100 text-slate-700"
+                      }
                     >
-                      Editar
-                    </Link>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+                      {person.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button asChild variant="outline" size="xs">
+                      <Link href={`/people/${person.person_id}/edit`}>Editar</Link>
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </section>
 
       <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
         <span className="text-muted-foreground">

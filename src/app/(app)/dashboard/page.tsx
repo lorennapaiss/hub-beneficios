@@ -1,5 +1,6 @@
+import { CreditCard, ShieldCheck, TriangleAlert, Wallet, Users } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
-import { CreditCard, Shield, Users, Wallet } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { getRowsCached } from "@/server/sheets";
 import { computeBalancesMap } from "@/server/balances";
 import { env } from "@/lib/env";
@@ -24,6 +25,11 @@ const parseNumber = (value: string) => {
   const parsed = Number(normalized);
   return Number.isNaN(parsed) ? 0 : parsed;
 };
+
+const currencyFormatter = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL",
+});
 
 const getLowBalanceThreshold = () => {
   const parsed = Number(env.LOW_BALANCE_THRESHOLD);
@@ -61,118 +67,120 @@ export default async function DashboardPage() {
     (card) => (balances.get(card.card_id) ?? 0) < lowBalanceThreshold
   ).length;
 
+  const summaryCards = [
+    {
+      label: "Em estoque",
+      value: statusCounts.ESTOQUE,
+      caption: "Cartões disponíveis para novas alocações",
+      icon: CreditCard,
+    },
+    {
+      label: "Alocados",
+      value: statusCounts.ALOCADO,
+      caption: "Cartões vinculados a colaboradores",
+      icon: Users,
+    },
+    {
+      label: "Bloqueados",
+      value: statusCounts.BLOQUEADO,
+      caption: "Itens que exigem avaliação operacional",
+      icon: ShieldCheck,
+    },
+    {
+      label: "Saldo crítico",
+      value: lowBalanceCards,
+      caption: `Abaixo de ${currencyFormatter.format(lowBalanceThreshold)}`,
+      icon: TriangleAlert,
+    },
+  ];
+
   return (
-    <div className="space-y-6">
+    <div className="page-section">
       <PageHeader
+        eyebrow="Operação de provisórios"
         title="Dashboard"
-        description="Visão geral do controle de cartões provisórios."
+        description="Painel executivo com visão consolidada de disponibilidade, saldo e pendências do ciclo operacional."
+        actions={
+          <Badge className="bg-background text-muted-foreground">
+            Atualizado em tempo real
+          </Badge>
+        }
       />
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-xs uppercase text-muted-foreground">Em estoque</div>
-              <div className="text-2xl font-semibold">{statusCounts.ESTOQUE}</div>
-            </div>
-            <div className="rounded-full bg-sky-100 p-2 text-sky-700">
-              <CreditCard className="size-5" />
-            </div>
-          </div>
-          <div className="mt-4 flex gap-1">
-            <span className="h-2 w-2 rounded-full bg-sky-400" />
-            <span className="h-2 w-2 rounded-full bg-sky-300" />
-            <span className="h-2 w-2 rounded-full bg-orange-300" />
-            <span className="h-2 w-2 rounded-full bg-orange-200" />
-          </div>
+      <section className="grid gap-4 xl:grid-cols-[1.5fr_1fr]">
+        <div className="section-panel subtle-ring grid gap-4 p-5 md:grid-cols-2">
+          {summaryCards.map((item) => {
+            const Icon = item.icon;
+            return (
+              <article
+                key={item.label}
+                className="rounded-2xl border border-border/80 bg-muted/20 p-5"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="space-y-3">
+                    <p className="page-stat-label">{item.label}</p>
+                    <div className="page-stat-value">{item.value}</div>
+                  </div>
+                  <div className="flex size-11 items-center justify-center rounded-2xl border border-border/80 bg-background text-primary">
+                    <Icon className="size-5" />
+                  </div>
+                </div>
+                <p className="mt-6 text-sm leading-6 text-muted-foreground">
+                  {item.caption}
+                </p>
+              </article>
+            );
+          })}
         </div>
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-xs uppercase text-muted-foreground">Alocados</div>
-              <div className="text-2xl font-semibold">{statusCounts.ALOCADO}</div>
-            </div>
-            <div className="rounded-full bg-orange-100 p-2 text-orange-700">
-              <Users className="size-5" />
-            </div>
-          </div>
-          <div className="mt-4 grid grid-cols-6 gap-1">
-            {[18, 26, 38, 28, 22, 34].map((h, idx) => (
-              <div
-                key={`alloc-${idx}`}
-                className="h-8 rounded-full bg-gradient-to-b from-sky-400 to-orange-300"
-                style={{ height: `${h}px` }}
-              />
-            ))}
-          </div>
-        </div>
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-xs uppercase text-muted-foreground">Bloqueados</div>
-              <div className="text-2xl font-semibold">{statusCounts.BLOQUEADO}</div>
-            </div>
-            <div className="rounded-full bg-slate-100 p-2 text-slate-700">
-              <Shield className="size-5" />
-            </div>
-          </div>
-          <div className="mt-4 h-2 w-full rounded-full bg-muted">
-            <div
-              className="h-2 rounded-full bg-slate-400"
-              style={{
-                width: `${Math.min(
-                  100,
-                  Math.round((statusCounts.BLOQUEADO / Math.max(cards.length, 1)) * 100)
-                )}%`,
-              }}
-            />
-          </div>
-        </div>
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-xs uppercase text-muted-foreground">Inativos</div>
-              <div className="text-2xl font-semibold">{statusCounts.INATIVO}</div>
-            </div>
-            <div className="rounded-full bg-sky-50 p-2 text-sky-700">
-              <Wallet className="size-5" />
-            </div>
-          </div>
-          <div className="mt-4 text-xs text-muted-foreground">
-            {cards.length ? "Base ativa monitorada." : "Sem dados."}
-          </div>
-        </div>
-      </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-          <div className="text-xs uppercase text-muted-foreground">
-            Total carregado no mes
+        <aside className="section-panel subtle-ring p-6">
+          <p className="page-copy-eyebrow">Resumo financeiro</p>
+          <div className="mt-4 space-y-6">
+            <div>
+              <p className="page-stat-label">Total carregado no mês</p>
+              <div className="mt-2 text-4xl font-semibold tracking-tight text-foreground">
+                {currencyFormatter.format(totalLoadedMonth)}
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Sem foto</span>
+                <span className="font-semibold text-foreground">{cardsWithoutPhoto}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Inativos</span>
+                <span className="font-semibold text-foreground">
+                  {statusCounts.INATIVO}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Base monitorada</span>
+                <span className="font-semibold text-foreground">
+                  {cards.length} cartões
+                </span>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-border/80 bg-muted/30 p-4">
+              <div className="flex items-center gap-3">
+                <div className="flex size-10 items-center justify-center rounded-2xl bg-background text-primary">
+                  <Wallet className="size-5" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">
+                    Governança operacional
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Priorize cartões sem foto e saldos abaixo do limite para reduzir risco
+                    operacional.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="mt-1 text-2xl font-semibold">
-            R$ {totalLoadedMonth.toFixed(2)}
-          </div>
-          <div className="mt-3 h-2 w-full rounded-full bg-muted">
-            <div className="h-2 w-2/3 rounded-full bg-gradient-to-r from-sky-500 to-orange-400" />
-          </div>
-        </div>
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-          <div className="text-xs uppercase text-muted-foreground">Sem foto</div>
-          <div className="mt-1 text-2xl font-semibold">{cardsWithoutPhoto}</div>
-          <div className="mt-3 text-xs text-muted-foreground">
-            Priorize fotos para rastreabilidade.
-          </div>
-        </div>
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-          <div className="text-xs uppercase text-muted-foreground">
-            Saldo abaixo do limite
-          </div>
-          <div className="mt-1 text-2xl font-semibold">{lowBalanceCards}</div>
-          <div className="text-xs text-muted-foreground">
-            Limite: R$ {lowBalanceThreshold.toFixed(2)}
-          </div>
-        </div>
-      </div>
+        </aside>
+      </section>
     </div>
   );
 }

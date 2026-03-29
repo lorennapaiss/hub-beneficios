@@ -1,26 +1,28 @@
-﻿import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, CreditCard, FileText, Receipt, Users, Wallet } from "lucide-react";
+import { PageHeader } from "@/components/page-header";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 const quickActions = [
   {
     title: "Novo pagamento",
-    description: "Registrar boleto ou nota fiscal.",
+    description: "Registrar boleto ou nota fiscal com rastreabilidade.",
     href: "/beneficios/pagamentos/new",
   },
   {
     title: "Nova pessoa",
-    description: "Cadastrar colaborador para alocação.",
+    description: "Cadastrar colaborador para alocação e histórico.",
     href: "/people/new",
   },
   {
     title: "Novo cartão",
-    description: "Cadastrar cartão provisório.",
+    description: "Abrir novo cadastro operacional de cartão provisório.",
     href: "/cards/new",
   },
   {
     title: "Nova carga",
-    description: "Programar carga de saldo.",
+    description: "Registrar carregamento e saldo com controle centralizado.",
     href: "/loads",
   },
 ];
@@ -28,123 +30,139 @@ const quickActions = [
 const modules = [
   {
     title: "Pagamentos",
-    description: "Controle de boletos, status e auditorias.",
+    description: "Fluxo financeiro com status, vencimentos e acompanhamento operacional.",
     href: "/beneficios/pagamentos",
-    color: "from-orange-400/80 via-orange-200/80 to-amber-50",
+    icon: Wallet,
   },
   {
     title: "Cartões provisórios",
-    description: "Gestão de cartões, cargas e eventos operacionais.",
+    description: "Inventário, saldo e movimentações da base de provisórios.",
     href: "/cards",
-    color: "from-sky-400/80 via-sky-200/80 to-slate-50",
+    icon: CreditCard,
   },
   {
     title: "Pessoas",
-    description: "Base de colaboradores e dados cadastrais.",
+    description: "Cadastro mestre dos colaboradores usados nas rotinas do portal.",
     href: "/people",
-    color: "from-blue-400/80 via-blue-200/80 to-slate-50",
+    icon: Users,
   },
   {
     title: "Cargas",
-    description: "Controle de cargas programadas.",
+    description: "Execução e conferência das recargas operacionais.",
     href: "/loads",
-    color: "from-emerald-300/80 via-emerald-100/70 to-white",
+    icon: Receipt,
   },
   {
-    title: "Dashboard",
-    description: "Visão geral das operações do portal.",
-    href: "/dashboard",
-    color: "from-slate-400/70 via-slate-200/60 to-white",
+    title: "Faturas",
+    description: "Análise documental e acompanhamento das faturas do benefício.",
+    href: "/faturas/analise",
+    icon: FileText,
   },
 ];
 
 export default function HubPage() {
   return (
-    <div className="space-y-10">
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.3em] text-orange-500">
-          Hub interno
-        </p>
-        <h1 className="text-3xl font-semibold text-slate-900">
-          Portal do time de benefícios
-        </h1>
-        <p className="max-w-2xl text-sm text-muted-foreground">
-          Acesse rapidamente as rotinas de pagamentos e cartões provisórios,
-          que são módulos diferentes. Selecione um módulo ou use os atalhos.
-        </p>
-      </div>
+    <div className="page-section">
+      <PageHeader
+        eyebrow="Portal corporativo"
+        title="Hub do time de benefícios"
+        description="Ponto de entrada das operações de cartões, pagamentos e rotinas administrativas com acesso rápido às frentes mais críticas."
+        actions={<Badge className="bg-background">Ambiente interno</Badge>}
+      />
 
-      <section className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-        <div className="glass-card rounded-3xl p-6">
-          <div className="flex items-center justify-between gap-4">
+      <section className="grid gap-5 xl:grid-cols-[1.4fr_0.9fr]">
+        <div className="section-panel subtle-ring p-6">
+          <div className="flex items-start justify-between gap-4">
             <div>
-              <h2 className="text-lg font-semibold text-slate-900">
-                Acesso rápido
+              <p className="page-copy-eyebrow">Atalhos operacionais</p>
+              <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">
+                Tarefas recorrentes do time
               </h2>
-              <p className="text-sm text-muted-foreground">
-                Execute tarefas comuns com um clique.
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+                Acesse rapidamente os fluxos mais usados sem navegar por múltiplas telas.
               </p>
             </div>
             <Button asChild variant="outline" size="sm">
-              <Link href="/beneficios">Ver todas as frentes</Link>
+              <Link href="/beneficios">Ver frentes</Link>
             </Button>
           </div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
             {quickActions.map((action) => (
               <Link
                 key={action.title}
                 href={action.href}
-                className="group rounded-2xl border border-white/60 bg-white/70 px-4 py-3 transition hover:border-orange-300/70 hover:shadow-sm"
+                className="group rounded-2xl border border-border/80 bg-muted/20 px-4 py-4 transition hover:border-primary/20 hover:bg-muted/35"
               >
-                <div className="text-sm font-semibold text-slate-900">
+                <div className="text-sm font-semibold text-foreground">
                   {action.title}
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">
                   {action.description}
                 </p>
-                <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-orange-500">
-                  Abrir <ArrowRight className="size-3 transition group-hover:translate-x-1" />
+                <span className="mt-4 inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+                  Acessar
+                  <ArrowRight className="size-3 transition group-hover:translate-x-1" />
                 </span>
               </Link>
             ))}
           </div>
         </div>
 
-        <div className="glass-card rounded-3xl p-6">
-          <h3 className="text-lg font-semibold text-slate-900">
-            Guia rápido do time
+        <div className="section-panel subtle-ring p-6">
+          <p className="page-copy-eyebrow">Fluxo recomendado</p>
+          <h3 className="mt-2 text-xl font-semibold tracking-tight text-foreground">
+            Sequência operacional
           </h3>
-          <ol className="mt-4 space-y-3 text-sm text-muted-foreground">
-            <li>1. Cadastre a pessoa antes de emitir o cartão provisório.</li>
-            <li>2. Registre cargas e valide saldo disponível.</li>
-            <li>3. Lance pagamentos e acompanhe vencimentos.</li>
-          </ol>
-          <Button asChild className="mt-4 w-full">
+          <div className="mt-5 space-y-4">
+            {[
+              "Cadastre a pessoa antes de emitir ou alocar o cartão provisório.",
+              "Registre cargas e valide o saldo disponível para a operação.",
+              "Lance pagamentos e acompanhe prazos, status e pendências.",
+            ].map((step, index) => (
+              <div
+                key={step}
+                className="flex gap-3 rounded-2xl border border-border/70 bg-muted/20 p-4"
+              >
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-background text-sm font-semibold text-foreground">
+                  {index + 1}
+                </div>
+                <p className="text-sm leading-6 text-muted-foreground">{step}</p>
+              </div>
+            ))}
+          </div>
+          <Button asChild className="mt-5 w-full">
             <Link href="/dashboard">Abrir visão geral</Link>
           </Button>
         </div>
       </section>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        {modules.map((module) => (
-          <Link
-            key={module.title}
-            href={module.href}
-            className="group glass-card rounded-3xl p-6 transition hover:-translate-y-1 hover:shadow-md"
-          >
-            <div className={`h-16 rounded-2xl bg-gradient-to-br ${module.color}`} />
-            <h2 className="mt-4 text-lg font-semibold text-slate-900">
-              {module.title}
-            </h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {module.description}
-            </p>
-            <span className="mt-4 inline-flex text-xs font-semibold text-orange-500">
-              Abrir módulo
-            </span>
-          </Link>
-        ))}
-      </div>
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {modules.map((module) => {
+          const Icon = module.icon;
+          return (
+            <Link
+              key={module.title}
+              href={module.href}
+              className="section-panel subtle-ring group p-6 transition hover:-translate-y-0.5"
+            >
+              <div className="flex size-11 items-center justify-center rounded-2xl border border-border/80 bg-muted/25 text-primary">
+                <Icon className="size-5" />
+              </div>
+              <h2 className="mt-5 text-lg font-semibold text-foreground">
+                {module.title}
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                {module.description}
+              </p>
+              <span className="mt-5 inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+                Abrir módulo
+                <ArrowRight className="size-3 transition group-hover:translate-x-1" />
+              </span>
+            </Link>
+          );
+        })}
+      </section>
     </div>
   );
 }

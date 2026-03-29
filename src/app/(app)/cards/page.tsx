@@ -1,13 +1,25 @@
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { CreditCard, Plus, Search } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { getPagination, makePageLinkBuilder } from "@/lib/pagination";
-import { listCards } from "@/server/cards";
 import { computeBalancesMap } from "@/server/balances";
+import { listCards } from "@/server/cards";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
-
 
 type SearchParams = {
   search?: string;
@@ -17,6 +29,11 @@ type SearchParams = {
   limit?: string;
   offset?: string;
 };
+
+const currencyFormatter = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL",
+});
 
 export default async function CardsPage({
   searchParams,
@@ -35,118 +52,155 @@ export default async function CardsPage({
   });
   const balances = await computeBalancesMap();
 
-  const makePageLink = makePageLinkBuilder("/cards", {
-    search: resolvedParams.search,
-    marca: resolvedParams.marca,
-    unidade: resolvedParams.unidade,
-    status: resolvedParams.status,
-  }, limit);
+  const makePageLink = makePageLinkBuilder(
+    "/cards",
+    {
+      search: resolvedParams.search,
+      marca: resolvedParams.marca,
+      unidade: resolvedParams.unidade,
+      status: resolvedParams.status,
+    },
+    limit,
+  );
 
   return (
-    <div className="space-y-6">
+    <div className="page-section">
       <PageHeader
+        eyebrow="Controle operacional"
         title="Cartões"
-        description="Cadastro, status e historico de cada cartao."
+        description="Gestão centralizada de cartões provisórios, com foco em disponibilidade, saldo e rastreabilidade."
         actions={
-          <Button asChild>
-            <Link href="/cards/new">Novo cartao</Link>
-          </Button>
+          <>
+            <Badge>{total} cartões</Badge>
+            <Button asChild>
+              <Link href="/cards/new">
+                <Plus className="size-4" />
+                Novo cartão
+              </Link>
+            </Button>
+          </>
         }
       />
 
-      <form
-        method="get"
-        className="grid gap-3 rounded-lg border border-border bg-card p-4 md:grid-cols-5"
-      >
-        <input
-          name="search"
-          placeholder="Buscar numero"
-          aria-label="Buscar numero"
-          defaultValue={resolvedParams.search ?? ""}
-          className="rounded-md border border-border bg-background px-3 py-2 text-sm"
-        />
-        <input
-          name="marca"
-          placeholder="Marca"
-          aria-label="Filtrar por marca"
-          defaultValue={resolvedParams.marca ?? ""}
-          className="rounded-md border border-border bg-background px-3 py-2 text-sm"
-        />
-        <input
-          name="unidade"
-          placeholder="Unidade"
-          aria-label="Filtrar por unidade"
-          defaultValue={resolvedParams.unidade ?? ""}
-          className="rounded-md border border-border bg-background px-3 py-2 text-sm"
-        />
-        <select
-          name="status"
-          aria-label="Filtrar por status"
-          defaultValue={resolvedParams.status ?? ""}
-          className="rounded-md border border-border bg-background px-3 py-2 text-sm"
-        >
-          <option value="">Status</option>
-          <option value="ESTOQUE">ESTOQUE</option>
-          <option value="ALOCADO">ALOCADO</option>
-          <option value="BLOQUEADO">BLOQUEADO</option>
-          <option value="INATIVO">INATIVO</option>
-        </select>
-        <Button type="submit">Filtrar</Button>
+      <form method="get" className="toolbar-panel">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[1.4fr_1fr_1fr_0.9fr_auto]">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              name="search"
+              placeholder="Buscar por número do cartão"
+              defaultValue={resolvedParams.search ?? ""}
+              className="pl-9"
+            />
+          </div>
+          <Input
+            name="marca"
+            placeholder="Filtrar por marca"
+            defaultValue={resolvedParams.marca ?? ""}
+          />
+          <Input
+            name="unidade"
+            placeholder="Filtrar por unidade"
+            defaultValue={resolvedParams.unidade ?? ""}
+          />
+          <Select name="status" defaultValue={resolvedParams.status ?? ""}>
+            <option value="">Todos os status</option>
+            <option value="ESTOQUE">Estoque</option>
+            <option value="ALOCADO">Alocado</option>
+            <option value="BLOQUEADO">Bloqueado</option>
+            <option value="INATIVO">Inativo</option>
+          </Select>
+          <div className="flex gap-2">
+            <Button type="submit" className="flex-1">
+              Aplicar
+            </Button>
+            <Button asChild variant="outline" className="flex-1">
+              <Link href="/cards">Limpar</Link>
+            </Button>
+          </div>
+        </div>
       </form>
 
-      <div className="overflow-hidden rounded-lg border border-border bg-card">
-        <table className="w-full text-sm">
-          <thead className="border-b border-border bg-muted/40 text-left">
-            <tr>
-              <th className="px-4 py-3 font-medium">Numero</th>
-              <th className="px-4 py-3 font-medium">Marca</th>
-              <th className="px-4 py-3 font-medium">Unidade</th>
-              <th className="px-4 py-3 font-medium">Status</th>
-              <th className="px-4 py-3 font-medium">Saldo</th>
-              <th className="px-4 py-3 font-medium">Pessoa</th>
-              <th className="px-4 py-3 text-right font-medium">Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.length === 0 ? (
-              <tr>
-                <td className="px-4 py-6 text-muted-foreground" colSpan={7}>
-                  Nenhum cartao encontrado.
-                </td>
-              </tr>
-            ) : (
-              rows.map((card) => (
-                <tr key={card.card_id} className="border-b border-border">
-                  <td className="px-4 py-3">{card.numero_cartao}</td>
-                  <td className="px-4 py-3">{card.marca}</td>
-                  <td className="px-4 py-3">{card.unidade}</td>
-                  <td className="px-4 py-3">{card.status}</td>
-                  <td className="px-4 py-3">
-                    R$ {(balances.get(card.card_id) ?? 0).toFixed(2)}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">-</td>
-                  <td className="px-4 py-3 text-right">
+      <section className="table-panel">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/70 px-5 py-4">
+          <div>
+            <h2 className="text-base font-semibold text-foreground">Inventário de cartões</h2>
+            <p className="text-sm text-muted-foreground">
+              Página {currentPage} de {totalPages(total)}
+            </p>
+          </div>
+          <Badge className="bg-background">{total} resultados</Badge>
+        </div>
+
+        {rows.length === 0 ? (
+          <div className="p-5">
+            <EmptyState
+              icon={CreditCard}
+              title="Nenhum cartão encontrado"
+              description="Ajuste os filtros ou cadastre um novo cartão para manter o inventário atualizado."
+              action={
+                <Button asChild>
+                  <Link href="/cards/new">Cadastrar cartão</Link>
+                </Button>
+              }
+            />
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Número</TableHead>
+                <TableHead>Marca</TableHead>
+                <TableHead>Unidade</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Saldo</TableHead>
+                <TableHead>Pessoa</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((card) => (
+                <TableRow key={card.card_id}>
+                  <TableCell className="font-medium text-foreground">
+                    {card.numero_cartao}
+                  </TableCell>
+                  <TableCell>{card.marca}</TableCell>
+                  <TableCell>{card.unidade}</TableCell>
+                  <TableCell>
+                    <Badge
+                      className={
+                        card.status === "ALOCADO"
+                          ? "border-blue-200 bg-blue-50 text-blue-700"
+                          : card.status === "ESTOQUE"
+                            ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                            : card.status === "BLOQUEADO"
+                              ? "border-amber-200 bg-amber-50 text-amber-700"
+                              : "border-slate-200 bg-slate-100 text-slate-700"
+                      }
+                    >
+                      {card.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {currencyFormatter.format(balances.get(card.card_id) ?? 0)}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">-</TableCell>
+                  <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      <Link
-                        className="text-sm font-medium text-primary hover:underline"
-                        href={`/cards/${card.card_id}`}
-                      >
-                        Ver
-                      </Link>
-                      <Link
-                        className="text-sm font-medium text-primary hover:underline"
-                        href={`/cards/${card.card_id}/edit`}
-                      >
-                        Editar
-                      </Link>
+                      <Button asChild variant="outline" size="xs">
+                        <Link href={`/cards/${card.card_id}`}>Ver</Link>
+                      </Button>
+                      <Button asChild variant="outline" size="xs">
+                        <Link href={`/cards/${card.card_id}/edit`}>Editar</Link>
+                      </Button>
                     </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </section>
 
       <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
         <span className="text-muted-foreground">

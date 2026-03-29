@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 type PageHeaderProps = {
+  eyebrow?: string;
   title: string;
   description?: string;
   actions?: ReactNode;
@@ -9,6 +10,7 @@ type PageHeaderProps = {
 };
 
 export function PageHeader({
+  eyebrow = "Visão geral",
   title,
   description,
   actions,
@@ -17,20 +19,26 @@ export function PageHeader({
   return (
     <div
       className={cn(
-        "flex flex-wrap items-start justify-between gap-4",
+        "flex flex-col gap-5 border-b border-border/70 pb-5 lg:flex-row lg:items-end lg:justify-between",
         className
       )}
     >
-      <div>
-        <div className="mb-2 h-1 w-14 rounded-full bg-[linear-gradient(90deg,theme(colors.sky.500),theme(colors.orange.400))]" />
-        <h1 className="font-display text-2xl font-semibold text-foreground">
-          {title}
-        </h1>
-        {description ? (
-          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-        ) : null}
+      <div className="max-w-3xl space-y-2">
+        <p className="page-copy-eyebrow">{eyebrow}</p>
+        <div className="space-y-1">
+          <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
+            {title}
+          </h1>
+          {description ? (
+            <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-[0.95rem]">
+              {description}
+            </p>
+          ) : null}
+        </div>
       </div>
-      {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
+      {actions ? (
+        <div className="flex flex-wrap items-center gap-2 lg:justify-end">{actions}</div>
+      ) : null}
     </div>
   );
 }

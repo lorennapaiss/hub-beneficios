@@ -12,10 +12,7 @@ type TopbarProps = {
   onMobileNavOpenChange: (open: boolean) => void;
 };
 
-export function Topbar({
-  mobileNavOpen,
-  onMobileNavOpenChange,
-}: TopbarProps) {
+export function Topbar({ mobileNavOpen, onMobileNavOpenChange }: TopbarProps) {
   const { data: session } = useSession();
   const user = session?.user;
   const userLabel = user?.name ?? user?.email ?? "Usuário";
@@ -29,8 +26,8 @@ export function Topbar({
       .toUpperCase() ?? "U";
 
   return (
-    <header className="relative sticky top-0 z-40 border-b border-white/40 bg-white/70 backdrop-blur after:absolute after:inset-x-0 after:-bottom-px after:h-px after:bg-gradient-to-r after:from-sky-500 after:via-orange-400 after:to-transparent">
-      <div className="flex h-16 items-center gap-3 px-4 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-40 border-b border-border/70 bg-background/88 backdrop-blur-xl">
+      <div className="mx-auto flex h-[72px] max-w-[1600px] items-center gap-3 px-4 sm:px-6 lg:px-8">
         <Sheet open={mobileNavOpen} onOpenChange={onMobileNavOpenChange}>
           <SheetTrigger asChild>
             <Button
@@ -43,36 +40,33 @@ export function Topbar({
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="p-0">
-            <SidebarNav
-              variant="sheet"
-              onNavigate={() => onMobileNavOpenChange(false)}
-            />
+            <SidebarNav variant="sheet" onNavigate={() => onMobileNavOpenChange(false)} />
           </SheetContent>
         </Sheet>
 
-        <div className="flex flex-1 items-center gap-2">
-          <div className="text-sm font-semibold text-foreground sm:text-base">
-            Hub Benefícios
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <div className="min-w-0">
+            <div className="truncate text-sm font-semibold text-foreground sm:text-base">
+              Hub Benefícios
+            </div>
+            <div className="hidden text-sm text-muted-foreground xl:block">
+              Operações do time de benefícios
+            </div>
           </div>
-          <div className="hidden text-sm text-muted-foreground sm:block">
-            Operações do time de benefícios
-          </div>
-          <span className="hidden rounded-full border border-sky-200/70 bg-sky-100/70 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-sky-700 sm:inline-flex">
-            Interno
+          <span className="hidden rounded-full border border-border/80 bg-card px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground sm:inline-flex">
+            Operação interna
           </span>
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="text-right">
-            <div className="text-sm font-medium text-foreground">
-              {userLabel}
-            </div>
+          <div className="hidden text-right sm:block">
+            <div className="text-sm font-medium text-foreground">{userLabel}</div>
             {userEmail ? (
               <div className="text-xs text-muted-foreground">{userEmail}</div>
             ) : null}
           </div>
-          <Avatar className="size-8 border border-primary/20">
-            <AvatarFallback>
+          <Avatar className="size-9 border border-border/80 bg-card">
+            <AvatarFallback className="bg-transparent text-foreground">
               {user?.name ? initials : <User className="size-4" />}
             </AvatarFallback>
           </Avatar>

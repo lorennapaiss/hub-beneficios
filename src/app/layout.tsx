@@ -32,7 +32,7 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <body
-        className={`${manrope.variable} ${playfair.variable} ${jetbrainsMono.variable} bg-aurora min-h-screen antialiased`}
+        className={`${manrope.variable} ${playfair.variable} ${jetbrainsMono.variable} min-h-screen antialiased`}
       >
         <Providers>{children}</Providers>
       </body>
