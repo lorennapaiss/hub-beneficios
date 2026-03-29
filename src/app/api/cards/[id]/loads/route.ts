@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions, isAllowedEmail } from "@/lib/auth";
+import { requireAllowedUser, getActorEmail, handleApiError } from "@/server/api-utils";
 import { LoadInputSchema } from "@/lib/schemas/load";
 import { getCardById } from "@/server/cards";
 import { createLoad } from "@/server/loads";
@@ -22,8 +21,6 @@ const resolveId = async (request: Request, params: RouteParams["params"]) => {
   return pathname.split("/").pop() ?? "";
 };
 
-const getActorEmail = (email?: string | null) => email ?? "unknown";
-
 const parseNumber = (value: unknown) => {
   if (typeof value === "number") return value;
   if (typeof value === "string") {
@@ -35,10 +32,8 @@ const parseNumber = (value: unknown) => {
 };
 
 export async function POST(request: Request, { params }: RouteParams) {
-  const session = await getServerSession(authOptions);
-  if (!isAllowedEmail(session?.user?.email)) {
-    return NextResponse.json({ ok: false, error: "Acesso negado." }, { status: 403 });
-  }
+  const { session, response } = await requireAllowedUser();
+  if (response) return response;
 
   const rate = checkRateLimit(request, {
     key: "cards:loads",
@@ -81,12 +76,11 @@ export async function POST(request: Request, { params }: RouteParams) {
     const load = await createLoad({
       card,
       ...parsed.data,
-      created_by: getActorEmail(session?.user?.email),
+      created_by: getActorEmail(session),
     });
 
     return NextResponse.json({ ok: true, data: load }, { status: 201 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Erro ao registrar carga.";
-    return NextResponse.json({ ok: false, error: message }, { status: 400 });
+    return handleApiError(error, "cards:loads");
   }
 }

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
+import { getPagination, makePageLinkBuilder } from "@/lib/pagination";
 import { listLoads } from "@/server/loads";
 
 export const dynamic = "force-dynamic";
@@ -17,20 +18,13 @@ type SearchParams = {
   offset?: string;
 };
 
-const toNumber = (value: string | undefined, fallback: number) => {
-  if (!value) return fallback;
-  const parsed = Number(value);
-  return Number.isNaN(parsed) ? fallback : parsed;
-};
-
 export default async function LoadsPage({
   searchParams,
 }: {
   searchParams: Promise<SearchParams>;
 }) {
   const resolvedParams = await searchParams;
-  const limit = toNumber(resolvedParams.limit, 10);
-  const offset = toNumber(resolvedParams.offset, 0);
+  const { limit, offset, totalPages, currentPage } = getPagination(resolvedParams);
   const { rows, total } = await listLoads({
     from: resolvedParams.from,
     to: resolvedParams.to,
@@ -41,20 +35,13 @@ export default async function LoadsPage({
     offset,
   });
 
-  const totalPages = Math.max(Math.ceil(total / limit), 1);
-  const currentPage = Math.floor(offset / limit) + 1;
-
-  const makePageLink = (nextOffset: number) => {
-    const params = new URLSearchParams();
-    if (resolvedParams.from) params.set("from", resolvedParams.from);
-    if (resolvedParams.to) params.set("to", resolvedParams.to);
-    if (resolvedParams.numero_cartao) params.set("numero_cartao", resolvedParams.numero_cartao);
-    if (resolvedParams.marca) params.set("marca", resolvedParams.marca);
-    if (resolvedParams.unidade) params.set("unidade", resolvedParams.unidade);
-    params.set("limit", String(limit));
-    params.set("offset", String(nextOffset));
-    return `/loads?${params.toString()}`;
-  };
+  const makePageLink = makePageLinkBuilder("/loads", {
+    from: resolvedParams.from,
+    to: resolvedParams.to,
+    numero_cartao: resolvedParams.numero_cartao,
+    marca: resolvedParams.marca,
+    unidade: resolvedParams.unidade,
+  }, limit);
 
   return (
     <div className="space-y-6">
@@ -68,6 +55,7 @@ export default async function LoadsPage({
           type="date"
           name="from"
           placeholder="De"
+          aria-label="De"
           defaultValue={resolvedParams.from ?? ""}
           className="rounded-md border border-border bg-background px-3 py-2 text-sm"
         />
@@ -75,24 +63,28 @@ export default async function LoadsPage({
           type="date"
           name="to"
           placeholder="Ate"
+          aria-label="Ate"
           defaultValue={resolvedParams.to ?? ""}
           className="rounded-md border border-border bg-background px-3 py-2 text-sm"
         />
         <input
           name="numero_cartao"
           placeholder="Numero do cartao"
+          aria-label="Numero do cartao"
           defaultValue={resolvedParams.numero_cartao ?? ""}
           className="rounded-md border border-border bg-background px-3 py-2 text-sm"
         />
         <input
           name="marca"
           placeholder="Marca"
+          aria-label="Marca"
           defaultValue={resolvedParams.marca ?? ""}
           className="rounded-md border border-border bg-background px-3 py-2 text-sm"
         />
         <input
           name="unidade"
           placeholder="Unidade"
+          aria-label="Unidade"
           defaultValue={resolvedParams.unidade ?? ""}
           className="rounded-md border border-border bg-background px-3 py-2 text-sm"
         />
@@ -160,7 +152,7 @@ export default async function LoadsPage({
 
       <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
         <span className="text-muted-foreground">
-          Página {currentPage} de {totalPages} · {total} registros
+          Página {currentPage} de {totalPages(total)} · {total} registros
         </span>
         <div className="flex items-center gap-2">
           <Button

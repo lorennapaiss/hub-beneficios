@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions, isAdminEmail } from "@/lib/auth";
 import { PageHeader } from "@/components/page-header";
+import { toNumber } from "@/lib/pagination";
 import { listAuditLogs } from "@/server/audit";
 import { AdminTabs } from "@/components/admin/admin-tabs";
 
@@ -17,12 +18,6 @@ type SearchParams = {
   limit?: string;
   offset?: string;
   tab?: string;
-};
-
-const toNumber = (value: string | undefined, fallback: number) => {
-  if (!value) return fallback;
-  const parsed = Number(value);
-  return Number.isNaN(parsed) ? fallback : parsed;
 };
 
 const getPeriodFrom = (period?: string) => {

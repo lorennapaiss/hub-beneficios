@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions, isAdminEmail, isAllowedEmail } from "@/lib/auth";
+import { requireAdminUser, handleApiError } from "@/server/api-utils";
 import { getClient } from "@/server/sheets";
 import { checkRateLimit } from "@/server/rate-limit";
 import { env } from "@/lib/env";
@@ -268,16 +267,6 @@ const getSpreadsheetId = () => {
   return env.SHEETS_SPREADSHEET_ID;
 };
 
-const assertAllowlist = (email?: string | null) => {
-  if (!isAllowedEmail(email) || !isAdminEmail(email)) {
-    return NextResponse.json(
-      { ok: false, error: "Acesso negado." },
-      { status: 403 }
-    );
-  }
-  return null;
-};
-
 export async function POST(request: Request) {
   if (!ensureSeedEnabled()) {
     return NextResponse.json(
@@ -286,9 +275,9 @@ export async function POST(request: Request) {
     );
   }
 
-  const session = await getServerSession(authOptions);
-  const allowlistError = assertAllowlist(session?.user?.email);
-  if (allowlistError) return allowlistError;
+  const { response } = await requireAdminUser();
+  if (response) return response;
+
   const rate = checkRateLimit(request, {
     key: "admin:seed",
     limit: 3,
@@ -350,9 +339,6 @@ export async function POST(request: Request) {
       headersInitialized: headersSet,
     });
   } catch (error) {
-    console.error("Seed do Sheets falhou.", error);
-    const message =
-      error instanceof Error ? error.message : "Erro ao inicializar schema.";
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    return handleApiError(error, "admin:seed");
   }
 }
