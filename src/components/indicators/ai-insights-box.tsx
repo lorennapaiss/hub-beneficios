@@ -57,18 +57,16 @@ export function AiInsightsBox({ benefit, context }: AiInsightsBoxProps) {
   };
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <section className="rounded-xl border border-border bg-card p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-violet-200 bg-violet-100 text-violet-700">
+          <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#4DBFB3]/30 bg-[#4DBFB3]/10 text-[#0C3B6F]">
             <Brain className="h-4 w-4" />
           </span>
           <div>
-            <h3 className="text-sm font-bold uppercase tracking-[0.08em] text-slate-700">
-              Insights com IA
-            </h3>
-            <p className="text-xs text-slate-500">
-              Analise contextual do recorte atual do dashboard.
+            <h3 className="text-sm font-semibold text-foreground">Insights com IA</h3>
+            <p className="text-xs text-muted-foreground">
+              Análise contextual do recorte atual do dashboard.
             </p>
           </div>
         </div>
@@ -81,14 +79,14 @@ export function AiInsightsBox({ benefit, context }: AiInsightsBoxProps) {
       {error ? <p className="mt-3 text-sm text-rose-600">{error}</p> : null}
 
       {insight ? (
-        <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.06em] text-slate-500">
+        <div className="mt-3 rounded-xl border border-border bg-muted/40 p-4">
+          <p className="mb-2 text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
             Resultado{" "}
             {provider
               ? `(${provider === "gemini" ? `IA${model ? ` - ${model}` : ""}` : "local"})`
               : ""}
           </p>
-          <pre className="whitespace-pre-wrap text-sm leading-6 text-slate-700">{insight}</pre>
+          <pre className="whitespace-pre-wrap text-sm leading-6 text-foreground">{insight}</pre>
           {provider === "local" && reason ? (
             <p className="mt-2 text-xs text-amber-700">
               Observacao tecnica: fallback local ativo ({reason}).

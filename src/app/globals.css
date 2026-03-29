@@ -180,25 +180,25 @@
   }
 
   .indicator-shell {
-    @apply rounded-2xl bg-[#f8fafc] p-4 md:p-6;
+    @apply rounded-xl bg-muted/30 p-4 md:p-6;
   }
   .indicator-filterbar {
-    @apply flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm;
+    @apply flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-3 shadow-sm;
   }
   .indicator-alert {
     @apply rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900;
   }
   .indicator-kpi-hero {
-    @apply rounded-2xl border border-slate-200 bg-white p-5 shadow-sm;
+    @apply rounded-xl border border-border bg-card p-5 shadow-sm;
   }
   .indicator-kpi-card {
-    @apply rounded-2xl border border-slate-200 bg-white p-4 shadow-sm;
+    @apply rounded-xl border border-border bg-card p-4 shadow-sm;
   }
   .indicator-kpi-label {
-    @apply text-xs font-semibold uppercase tracking-[0.08em] text-slate-500;
+    @apply text-xs font-medium uppercase tracking-[0.10em] text-muted-foreground;
   }
   .indicator-kpi-value {
-    @apply mt-1 text-4xl font-semibold leading-tight text-slate-900;
+    @apply mt-1 text-4xl font-semibold leading-tight text-foreground;
   }
   .indicator-page {
     @apply space-y-4;
@@ -218,35 +218,40 @@
   .indicator-metric-icon {
     @apply mb-1 inline-flex h-7 w-7 items-center justify-center rounded-md border;
   }
+  /* teal — custo */
   .indicator-metric-cost {
-    @apply border-sky-200 bg-gradient-to-br from-sky-50 to-white;
+    @apply border-[#4DBFB3]/25 bg-white;
   }
   .indicator-metric-cost .indicator-metric-icon {
-    @apply border-sky-200 bg-sky-100 text-sky-700;
+    @apply border-[#4DBFB3]/30 bg-[#4DBFB3]/12 text-[#0C3B6F];
   }
+  /* dark-blue — pessoas */
   .indicator-metric-people {
-    @apply border-indigo-200 bg-gradient-to-br from-indigo-50 to-white;
+    @apply border-[#0C3B6F]/20 bg-white;
   }
   .indicator-metric-people .indicator-metric-icon {
-    @apply border-indigo-200 bg-indigo-100 text-indigo-700;
+    @apply border-[#0C3B6F]/20 bg-[#0C3B6F]/8 text-[#0C3B6F];
   }
+  /* emerald — economia */
   .indicator-metric-economy {
-    @apply border-emerald-200 bg-gradient-to-br from-emerald-50 to-white;
+    @apply border-emerald-200 bg-white;
   }
   .indicator-metric-economy .indicator-metric-icon {
-    @apply border-emerald-200 bg-emerald-100 text-emerald-700;
+    @apply border-emerald-200 bg-emerald-50 text-emerald-700;
   }
+  /* orange — percentual/desconto */
   .indicator-metric-percent {
-    @apply border-amber-200 bg-gradient-to-br from-amber-50 to-white;
+    @apply border-[#F9A825]/30 bg-white;
   }
   .indicator-metric-percent .indicator-metric-icon {
-    @apply border-amber-200 bg-amber-100 text-amber-700;
+    @apply border-[#F9A825]/30 bg-[#F9A825]/12 text-[#0C3B6F];
   }
+  /* neutral */
   .indicator-metric-neutral {
-    @apply border-slate-200 bg-gradient-to-br from-slate-50 to-white;
+    @apply border-border bg-white;
   }
   .indicator-metric-neutral .indicator-metric-icon {
-    @apply border-slate-200 bg-slate-100 text-slate-700;
+    @apply border-border bg-muted text-muted-foreground;
   }
   .indicator-layout-a .indicator-page {
     @apply space-y-5;

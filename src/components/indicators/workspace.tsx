@@ -148,10 +148,10 @@ export function IndicatorsWorkspace({
         <div className="indicator-kpi-hero xl:col-span-6">
           <p className="indicator-kpi-label">Custo total geral</p>
           <p className="indicator-kpi-value">{formatCurrency(dashboard.totalCurrent)}</p>
-          <div className={`text-sm font-semibold ${variationClass(dashboard.totalVariationPercent)}`}>
+          <div className={`mt-1 text-sm font-semibold ${variationClass(dashboard.totalVariationPercent)}`}>
             {formatPercent(dashboard.totalVariationPercent)}
           </div>
-          <p className="mt-2 text-xs text-slate-500">
+          <p className="mt-2 text-xs text-muted-foreground">
             Competência {dashboard.competenceCurrent} vs{" "}
             {dashboard.competencePrevious ?? "sem base anterior"}
           </p>
@@ -159,12 +159,12 @@ export function IndicatorsWorkspace({
 
         <div className="indicator-kpi-card xl:col-span-3">
           <p className="indicator-kpi-label">Competência atual</p>
-          <p className="text-2xl font-semibold text-slate-900">{dashboard.competenceCurrent}</p>
+          <p className="text-2xl font-semibold text-foreground">{dashboard.competenceCurrent}</p>
         </div>
 
         <div className="indicator-kpi-card xl:col-span-3">
           <p className="indicator-kpi-label">Mês anterior</p>
-          <p className="text-2xl font-semibold text-slate-900">
+          <p className="text-2xl font-semibold text-foreground">
             {formatCurrency(dashboard.totalPrevious)}
           </p>
         </div>
@@ -172,11 +172,9 @@ export function IndicatorsWorkspace({
         <div className="indicator-kpi-card xl:col-span-12">
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             {dashboard.benefitSummaries.map((item) => (
-              <div key={item.key} className="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
-                  {item.label}
-                </p>
-                <p className="mt-1 text-lg font-semibold text-slate-900">
+              <div key={item.key} className="rounded-xl border border-border bg-muted/40 p-3">
+                <p className="indicator-kpi-label">{item.label}</p>
+                <p className="mt-1 text-lg font-semibold text-foreground">
                   {formatCurrency(item.totalCurrent)}
                 </p>
                 <p className={`text-xs font-semibold ${variationClass(item.variationPercent)}`}>
@@ -200,7 +198,7 @@ export function IndicatorsWorkspace({
         }}
         className="space-y-4"
       >
-        <TabsList variant="line" className="w-full justify-start overflow-x-auto border-b border-slate-200 pb-0.5">
+        <TabsList variant="line" className="w-full justify-start overflow-x-auto border-b border-border pb-0.5">
           {dashboard.benefitDashboards.map((tab) => (
             <TabsTrigger key={tab.key} value={tab.key} className="px-4">
               {tab.label}
@@ -301,12 +299,12 @@ function DashboardPanelSkeleton() {
       </div>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {Array.from({ length: 4 }).map((_, index) => (
-          <div key={index} className="h-32 animate-pulse rounded-2xl bg-slate-200/70" />
+          <div key={index} className="h-32 animate-pulse rounded-xl bg-muted" />
         ))}
       </div>
       <div className="grid gap-4 xl:grid-cols-2">
         {Array.from({ length: 2 }).map((_, index) => (
-          <div key={index} className="h-72 animate-pulse rounded-2xl bg-slate-200/70" />
+          <div key={index} className="h-72 animate-pulse rounded-xl bg-muted" />
         ))}
       </div>
     </div>
@@ -327,7 +325,7 @@ function StatusCard({
         <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="h-20 rounded-xl border border-dashed border-slate-200 bg-slate-50/70" />
+        <div className="h-20 rounded-xl border border-dashed border-border bg-muted/40" />
       </CardContent>
     </Card>
   );

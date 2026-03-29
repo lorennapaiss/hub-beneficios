@@ -337,8 +337,8 @@ function MetricCard({
           <Icon className="h-4 w-4" />
         </div>
       ) : null}
-      <p className="text-xs uppercase text-muted-foreground">{label}</p>
-      <p className="mt-1 text-2xl font-semibold">{value}</p>
+      <p className="indicator-kpi-label mt-1">{label}</p>
+      <p className="mt-1 text-xl font-semibold text-foreground">{value}</p>
     </div>
   );
 }
@@ -355,23 +355,25 @@ function BarList({
   numeric?: boolean;
 }) {
   return (
-    <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-      <div className="mb-3 flex items-center gap-2">
-        <span className="h-2.5 w-2.5 rounded-full bg-sky-500" />
-        <h3 className="text-sm font-bold uppercase tracking-[0.08em] text-slate-700">{title}</h3>
-      </div>
-      <div className="mt-3 max-h-80 space-y-2 overflow-auto pr-1">
+    <section className="rounded-xl border border-border bg-card p-5">
+      <h3 className="mb-4 text-sm font-semibold text-foreground">{title}</h3>
+      <div className="max-h-80 space-y-3 overflow-auto pr-1">
         {items.length === 0 ? (
           <p className="text-sm text-muted-foreground">Sem dados para exibir.</p>
         ) : (
           items.map((item) => (
-            <div key={item.label} className="space-y-1">
+            <div key={item.label} className="space-y-1.5">
               <div className="flex items-center justify-between text-sm">
-                <span>{item.label}</span>
-                <span>{numeric ? item.value : formatCurrencyCompact(item.value)}</span>
+                <span className="truncate pr-2 text-foreground/80">{item.label}</span>
+                <span className="shrink-0 font-medium text-foreground">
+                  {numeric ? item.value : formatCurrencyCompact(item.value)}
+                </span>
               </div>
-              <div className="h-2 w-full rounded-full bg-muted">
-                <div className="h-2 rounded-full bg-sky-500" style={{ width: `${Math.max((item.value / max) * 100, 4)}%` }} />
+              <div className="h-1.5 w-full rounded-full bg-muted">
+                <div
+                  className="h-1.5 rounded-full bg-primary transition-all"
+                  style={{ width: `${Math.max((item.value / max) * 100, 2)}%` }}
+                />
               </div>
             </div>
           ))
@@ -385,29 +387,38 @@ function RankList({
   title,
   items,
   max,
+  numeric,
 }: {
   title: string;
   items: ReadonlyArray<readonly [string, number]>;
   max: number;
+  numeric?: boolean;
 }) {
   return (
-    <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-      <div className="mb-3 flex items-center gap-2">
-        <span className="h-2.5 w-2.5 rounded-full bg-orange-500" />
-        <h3 className="text-sm font-bold uppercase tracking-[0.08em] text-slate-700">{title}</h3>
-      </div>
-      <div className="mt-3 max-h-80 space-y-2 overflow-auto pr-1">
+    <section className="rounded-xl border border-border bg-card p-5">
+      <h3 className="mb-4 text-sm font-semibold text-foreground">{title}</h3>
+      <div className="max-h-80 space-y-3 overflow-auto pr-1">
         {items.length === 0 ? (
           <p className="text-sm text-muted-foreground">Sem dados para exibir.</p>
         ) : (
-          items.map(([label, value]) => (
-            <div key={label} className="space-y-1">
+          items.map(([label, value], index) => (
+            <div key={label} className="space-y-1.5">
               <div className="flex items-center justify-between text-sm">
-                <span className="truncate pr-2">{label}</span>
-                <span>{formatCurrencyCompact(value)}</span>
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="shrink-0 text-[11px] font-semibold text-muted-foreground w-4 text-right">
+                    {index + 1}
+                  </span>
+                  <span className="truncate text-foreground/80">{label}</span>
+                </div>
+                <span className="shrink-0 pl-2 font-medium text-foreground">
+                  {numeric ? value : formatCurrencyCompact(value)}
+                </span>
               </div>
-              <div className="h-2 w-full rounded-full bg-muted">
-                <div className="h-2 rounded-full bg-orange-500" style={{ width: `${Math.max((value / max) * 100, 4)}%` }} />
+              <div className="h-1.5 w-full rounded-full bg-muted">
+                <div
+                  className="h-1.5 rounded-full bg-[#F9A825] transition-all"
+                  style={{ width: `${Math.max((value / max) * 100, 2)}%` }}
+                />
               </div>
             </div>
           ))

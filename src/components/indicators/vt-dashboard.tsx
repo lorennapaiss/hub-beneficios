@@ -726,7 +726,7 @@ export function VtDashboard({ records, mode = "B" }: VtDashboardProps) {
       </div>
 
       {monthComparison ? (
-        <section className="space-y-4 rounded-2xl border border-border bg-card p-5 shadow-sm">
+        <section className="space-y-4 rounded-xl border border-border bg-card p-5">
           <h3 className="text-base font-semibold">Comparativo mensal ({monthComparison.monthA} vs {monthComparison.monthB})</h3>
           <div className="grid gap-4 md:grid-cols-3">
             <MetricCard label={`Total ${monthComparison.monthA}`} value={formatCurrency(monthComparison.totalA)} icon={CalendarDays} tone="cost" />
@@ -754,10 +754,10 @@ export function VtDashboard({ records, mode = "B" }: VtDashboardProps) {
       ) : (
         <>
           <div className="grid gap-4 xl:grid-cols-2">
-            <RankingCard title="Custo por Marca (Acumulado)" items={stats.custoPorMarca} max={maxMarca} color="bg-sky-500" onClickLabel={(label) => setSelectedBrands([label])} />
+            <RankingCard title="Custo por Marca (Acumulado)" items={stats.custoPorMarca} max={maxMarca} color="bg-primary" onClickLabel={(label) => setSelectedBrands([label])} />
             <RankingCard title="Subtotal Acumulado por Cargo" items={stats.subtotalCargo} max={maxCargo} color="bg-orange-400" onClickLabel={(label) => setSelectedRoles([label])} />
             <div className="xl:col-span-2">
-              <RankingCard title="Economia por Marca" items={stats.economiaPorMarca} max={maxEconomiaMarca} color="bg-orange-500" onClickLabel={(label) => setSelectedBrands([label])} />
+              <RankingCard title="Economia por Marca" items={stats.economiaPorMarca} max={maxEconomiaMarca} color="bg-[#F9A825]" onClickLabel={(label) => setSelectedBrands([label])} />
             </div>
           </div>
 
@@ -768,7 +768,7 @@ export function VtDashboard({ records, mode = "B" }: VtDashboardProps) {
         </>
       )}
 
-      <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+      <section className="rounded-xl border border-border bg-card p-5">
         <h3 className="text-base font-semibold">Tendencia (com media movel 3 meses)</h3>
         <div className="mt-3 space-y-2">
           {stats.trendWithMovingAvg.length === 0 ? (
@@ -783,7 +783,7 @@ export function VtDashboard({ records, mode = "B" }: VtDashboardProps) {
                   </span>
                 </div>
                 <div className="h-2 w-full rounded-full bg-muted">
-                  <div className="h-2 rounded-full bg-sky-500" style={{ width: `${Math.max((point.value / maxTrend) * 100, 4)}%` }} />
+                  <div className="h-1.5 rounded-full bg-primary transition-all" style={{ width: `${Math.max((point.value / maxTrend) * 100, 2)}%` }} />
                 </div>
               </div>
             ))
@@ -791,7 +791,7 @@ export function VtDashboard({ records, mode = "B" }: VtDashboardProps) {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+      <section className="rounded-xl border border-border bg-card p-5">
         <div className="mb-3 grid gap-3 md:grid-cols-2">
           <Select
             value={crossX}
@@ -885,7 +885,7 @@ export function VtDashboard({ records, mode = "B" }: VtDashboardProps) {
         ) : null}
       </section>
 
-      <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+      <section className="rounded-xl border border-border bg-card p-5">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <h3 className="text-base font-semibold">Tabela analitica (custo medio por pessoa)</h3>
           <div className="flex items-center gap-2">
@@ -963,7 +963,7 @@ export function VtDashboard({ records, mode = "B" }: VtDashboardProps) {
       </section>
 
       <div className="grid gap-4 xl:grid-cols-2">
-        <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+        <section className="rounded-xl border border-border bg-card p-5">
           <h3 className="text-base font-semibold">Outliers de custo medio</h3>
           <p className="mt-1 text-xs text-muted-foreground">
             Mediana: {formatCurrency(outliers.median)} | Q1: {formatCurrency(outliers.q1)} | Q3: {formatCurrency(outliers.q3)}
@@ -984,7 +984,7 @@ export function VtDashboard({ records, mode = "B" }: VtDashboardProps) {
           </div>
         </section>
 
-        <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+        <section className="rounded-xl border border-border bg-card p-5">
           <h3 className="text-base font-semibold">Distribuicao (custo medio por pessoa)</h3>
           <div className="mt-3 space-y-2">
             {distribution.map((bucket) => (
@@ -994,7 +994,7 @@ export function VtDashboard({ records, mode = "B" }: VtDashboardProps) {
                   <span>{bucket.count}</span>
                 </div>
                 <div className="h-2 w-full rounded-full bg-muted">
-                  <div className="h-2 rounded-full bg-indigo-400" style={{ width: `${Math.max((bucket.count / maxDist) * 100, 3)}%` }} />
+                  <div className="h-1.5 rounded-full bg-primary transition-all" style={{ width: `${Math.max((bucket.count / maxDist) * 100, 2)}%` }} />
                 </div>
               </div>
             ))}
@@ -1002,7 +1002,7 @@ export function VtDashboard({ records, mode = "B" }: VtDashboardProps) {
         </section>
       </div>
 
-      <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+      <section className="rounded-xl border border-border bg-card p-5">
         <h3 className="text-base font-semibold">Qualidade dos dados</h3>
         <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4 text-sm">
           <QualityItem label="Sem colaborador" value={dataQuality.missingEmployee} />
@@ -1012,7 +1012,7 @@ export function VtDashboard({ records, mode = "B" }: VtDashboardProps) {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+      <section className="rounded-xl border border-border bg-card p-5">
         <h3 className="text-base font-semibold">Visoes salvas</h3>
         <div className="mt-3 flex flex-wrap gap-2">
           <Input placeholder="Nome da visão" value={newViewName} onChange={(e) => setNewViewName(e.target.value)} className="w-64" />
@@ -1058,16 +1058,16 @@ function MetricCard({
           <Icon className="h-4 w-4" />
         </div>
       ) : null}
-      <p className="text-xs uppercase text-muted-foreground">{label}</p>
-      <p className="mt-1 text-2xl font-semibold">{value}</p>
+      <p className="indicator-kpi-label mt-1">{label}</p>
+      <p className="mt-1 text-xl font-semibold text-foreground">{value}</p>
     </div>
   );
 }
 
 function QualityItem({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-xl border bg-background p-3">
-      <p className="text-xs uppercase text-muted-foreground">{label}</p>
+    <div className="rounded-xl border border-border bg-card p-3">
+      <p className="indicator-kpi-label">{label}</p>
       <p className={`mt-1 text-xl font-semibold ${value > 0 ? "text-rose-600" : "text-emerald-600"}`}>{value}</p>
     </div>
   );
@@ -1091,11 +1091,8 @@ function ComparisonTable({
   const pagedRows = rows.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   return (
-    <section className="rounded-2xl border border-border bg-background p-4">
-      <div className="mb-2 flex items-center gap-2">
-        <span className="h-2.5 w-2.5 rounded-full bg-violet-500" />
-        <h4 className="text-xs font-bold uppercase tracking-[0.08em] text-slate-700">{title}</h4>
-      </div>
+    <section className="rounded-xl border border-border bg-card p-4">
+      <h4 className="mb-2 text-sm font-semibold text-foreground">{title}</h4>
       <div className="mb-2 text-right text-xs text-muted-foreground">
         Pagina {safePage}/{totalPages}
       </div>
@@ -1165,29 +1162,29 @@ function RankingCard({
   onClickLabel?: (label: string) => void;
 }) {
   return (
-    <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-      <div className="mb-3 flex items-center gap-2">
-        <span className={`h-2.5 w-2.5 rounded-full ${color}`} />
-        <h3 className="text-sm font-bold uppercase tracking-[0.08em] text-slate-700">{title}</h3>
-      </div>
-      <div className="mt-3 max-h-80 space-y-2 overflow-auto pr-1">
+    <section className="rounded-xl border border-border bg-card p-5">
+      <h3 className="mb-4 text-sm font-semibold text-foreground">{title}</h3>
+      <div className="max-h-80 space-y-3 overflow-auto pr-1">
         {items.length === 0 ? (
           <p className="text-sm text-muted-foreground">Sem dados para exibir.</p>
         ) : (
-          items.map(([label, value]) => (
-            <div key={label} className="space-y-1">
+          items.map(([label, value], index) => (
+            <div key={label} className="space-y-1.5">
               <div className="flex items-center justify-between text-sm">
-                {onClickLabel ? (
-                  <button type="button" className="truncate pr-2 text-left text-sky-700 hover:underline" onClick={() => onClickLabel(label)}>
-                    {label}
-                  </button>
-                ) : (
-                  <span className="truncate pr-2">{label}</span>
-                )}
-                <span className="text-muted-foreground">{formatCurrencyCompact(value)}</span>
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="w-4 shrink-0 text-right text-[11px] font-semibold text-muted-foreground">{index + 1}</span>
+                  {onClickLabel ? (
+                    <button type="button" className="truncate text-left text-primary hover:underline" onClick={() => onClickLabel(label)}>
+                      {label}
+                    </button>
+                  ) : (
+                    <span className="truncate text-foreground/80">{label}</span>
+                  )}
+                </div>
+                <span className="shrink-0 pl-2 font-medium text-foreground">{formatCurrencyCompact(value)}</span>
               </div>
-              <div className="h-2 w-full rounded-full bg-muted">
-                <div className={`h-2 rounded-full ${color}`} style={{ width: `${Math.max((value / max) * 100, 4)}%` }} />
+              <div className="h-1.5 w-full rounded-full bg-muted">
+                <div className={`h-1.5 rounded-full ${color} transition-all`} style={{ width: `${Math.max((value / max) * 100, 2)}%` }} />
               </div>
             </div>
           ))
@@ -1207,25 +1204,22 @@ function SimpleListCard({
   const max = Math.max(...items.map(([, value]) => value), 1);
 
   return (
-    <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-      <div className="mb-3 flex items-center gap-2">
-        <span className="h-2.5 w-2.5 rounded-full bg-indigo-500" />
-        <h3 className="text-sm font-bold uppercase tracking-[0.08em] text-slate-700">{title}</h3>
-      </div>
-      <div className="mt-3 max-h-80 space-y-2 overflow-auto pr-1">
+    <section className="rounded-xl border border-border bg-card p-5">
+      <h3 className="mb-4 text-sm font-semibold text-foreground">{title}</h3>
+      <div className="max-h-80 space-y-3 overflow-auto pr-1">
         {items.length === 0 ? (
           <p className="text-sm text-muted-foreground">Sem dados para exibir.</p>
         ) : (
           items.map(([label, value]) => (
-            <div key={label} className="space-y-1">
+            <div key={label} className="space-y-1.5">
               <div className="flex items-center justify-between text-sm">
-                <span>{label}</span>
-                <span className="font-medium">{formatCurrencyCompact(value)}</span>
+                <span className="truncate pr-2 text-foreground/80">{label}</span>
+                <span className="shrink-0 font-medium text-foreground">{formatCurrencyCompact(value)}</span>
               </div>
-              <div className="h-2 w-full rounded-full bg-muted">
+              <div className="h-1.5 w-full rounded-full bg-muted">
                 <div
-                  className="h-2 rounded-full bg-indigo-500"
-                  style={{ width: `${Math.max((value / max) * 100, 4)}%` }}
+                  className="h-1.5 rounded-full bg-primary transition-all"
+                  style={{ width: `${Math.max((value / max) * 100, 2)}%` }}
                 />
               </div>
             </div>
