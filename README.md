@@ -15,6 +15,8 @@ Crie `.env.local`:
 GOOGLE_CLIENT_ID=...
 GOOGLE_CLIENT_SECRET=...
 NEXTAUTH_SECRET=...
+SUPABASE_URL=https://jvynxlyynhumhjfwfwuz.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=...
 ALLOWED_EMAILS=usuario@empresa.com,outra@empresa.com
 # ou
 ALLOWED_DOMAIN=empresa.com
@@ -29,6 +31,8 @@ ENABLE_SEED=false
 
 Notas:
 - `NEXTAUTH_SECRET` e obrigatorio para assinar sessoes.
+- `SUPABASE_URL` para seu projeto e `https://jvynxlyynhumhjfwfwuz.supabase.co`.
+- `SUPABASE_SERVICE_ROLE_KEY` deve ficar apenas no servidor.
 - `ALLOWED_EMAILS` ou `ALLOWED_DOMAIN` libera acesso.
 - `ADMIN_EMAILS` controla acesso ao `/admin`.
 - `GOOGLE_PRIVATE_KEY` deve manter `\n` escapados.
@@ -93,6 +97,13 @@ Variaveis na Vercel (Production):
 - `src/components`: UI
 - `src/server`: integracoes (Sheets/Drive) e regras server-side
 - `docs`: documentacao de schema do Sheets
+
+## Migracao Inicial Para Supabase
+- Projeto identificado: `jvynxlyynhumhjfwfwuz`
+- URL base: `https://jvynxlyynhumhjfwfwuz.supabase.co`
+- Client server-side pronto em `src/server/supabase.ts`
+- Proximo passo obrigatorio: preencher `SUPABASE_SERVICE_ROLE_KEY` no `.env.local`
+- Depois disso, a primeira migracao recomendada e `user_brand_access`, porque ela desacopla o controle de acesso dos indicadores do Sheets antes das tabelas analiticas.
 
 ## Descritivo de Desconto PJ
 - A ficha do PJ agora possui a rotina de geracao do descritivo mensal de desconto do plano de saude.

@@ -1,10 +1,12 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
-import { authOptions, isAdminEmail } from "@/lib/auth";
+import { authOptions, resolveAuthenticatedEmail } from "@/lib/auth";
 import { PageHeader } from "@/components/page-header";
 import { toNumber } from "@/lib/pagination";
 import { listAuditLogs } from "@/server/audit";
 import { AdminTabs } from "@/components/admin/admin-tabs";
+import { listManagedUsers } from "@/server/admin/users";
+import { getUserAccessProfile } from "@/server/user-access";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -33,6 +35,8 @@ const getPeriodFrom = (period?: string) => {
 const getEnvStatus = () => {
   const env = process.env;
   return [
+    { label: "SUPABASE_URL", ok: Boolean(env.SUPABASE_URL) },
+    { label: "SUPABASE_SERVICE_ROLE_KEY", ok: Boolean(env.SUPABASE_SERVICE_ROLE_KEY) },
     { label: "GOOGLE_CLIENT_ID", ok: Boolean(env.GOOGLE_CLIENT_ID) },
     { label: "GOOGLE_CLIENT_SECRET", ok: Boolean(env.GOOGLE_CLIENT_SECRET) },
     { label: "NEXTAUTH_SECRET", ok: Boolean(env.NEXTAUTH_SECRET) },
@@ -64,7 +68,8 @@ export default async function AdminPage({
 }) {
   const resolvedParams = await searchParams;
   const session = await getServerSession(authOptions);
-  if (!isAdminEmail(session?.user?.email)) {
+  const profile = await getUserAccessProfile(resolveAuthenticatedEmail(session?.user?.email));
+  if (profile?.role !== "ADMIN") {
     redirect("/");
   }
 
@@ -73,16 +78,37 @@ export default async function AdminPage({
   const period = resolvedParams.period ?? "all";
   const from = getPeriodFrom(period);
 
-  const audit = await listAuditLogs({
-    entity_type: resolvedParams.entity_type,
-    action: resolvedParams.action,
-    created_by: resolvedParams.created_by,
-    from,
-    limit,
-    offset,
-  });
+  let audit: Awaited<ReturnType<typeof listAuditLogs>> = { rows: [], total: 0 };
+  let auditLoadError: string | null = null;
+  try {
+    audit = await listAuditLogs({
+      entity_type: resolvedParams.entity_type,
+      action: resolvedParams.action,
+      created_by: resolvedParams.created_by,
+      from,
+      limit,
+      offset,
+    });
+  } catch (error) {
+    auditLoadError =
+      error instanceof Error ? error.message : "Nao foi possivel carregar a auditoria.";
+  }
 
-  const defaultTab = resolvedParams.tab === "config" ? "config" : "audit";
+  let managedUsers: Awaited<ReturnType<typeof listManagedUsers>> = [];
+  let managedUsersError: string | null = null;
+  try {
+    managedUsers = await listManagedUsers();
+  } catch (error) {
+    managedUsersError =
+      error instanceof Error ? error.message : "Nao foi possivel carregar os usuarios.";
+  }
+
+  const defaultTab =
+    resolvedParams.tab === "config"
+      ? "config"
+      : resolvedParams.tab === "users"
+        ? "users"
+        : "audit";
   const envStatus = getEnvStatus();
 
   return (
@@ -92,6 +118,7 @@ export default async function AdminPage({
         defaultTab={defaultTab}
         auditRows={audit.rows}
         auditTotal={audit.total}
+        auditLoadError={auditLoadError}
         limit={limit}
         offset={offset}
         filters={{
@@ -101,6 +128,8 @@ export default async function AdminPage({
           period,
         }}
         envStatus={envStatus}
+        users={managedUsers}
+        usersLoadError={managedUsersError}
       />
     </div>
   );

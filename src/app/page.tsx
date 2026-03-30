@@ -1,9 +1,5 @@
-"use client";
-
-import Link from "next/link";
 import { CreditCard, ShieldCheck, Sparkles, Wallet } from "lucide-react";
-import { signIn } from "next-auth/react";
-import { Button } from "@/components/ui/button";
+import { LoginCard } from "@/components/auth/login-card";
 
 const highlights = [
   {
@@ -20,13 +16,24 @@ const highlights = [
   },
   {
     title: "Governança",
-    description: "Alertas e auditoria automatizados.",
+    description: "Alertas, indicadores e auditoria automatizados.",
     icon: ShieldCheck,
     gradient: "from-[#0C3B6F]/15 via-[#4A90E2]/10 to-white",
   },
 ];
 
-export default function HomePage() {
+type HomePageProps = {
+  searchParams?: Promise<{
+    callbackUrl?: string;
+    error?: string;
+  }>;
+};
+
+export default async function HomePage({ searchParams }: HomePageProps) {
+  const params = (await searchParams) ?? {};
+  const callbackUrl = params.callbackUrl ?? "/hub";
+  const error = params.error;
+
   return (
     <div className="relative min-h-screen overflow-hidden px-4">
       <div className="pointer-events-none absolute inset-0">
@@ -44,42 +51,22 @@ export default function HomePage() {
               Hub de benefícios Raiz Educação
             </div>
             <h1 className="font-display text-4xl font-semibold text-slate-900 md:text-5xl">
-              Portal interno para o time que cuida dos benefícios
+              Portal interno com acesso por perfil e marca
             </h1>
             <p className="max-w-xl text-base text-slate-600">
-              Acompanhamento de pagamentos e controle cartões provisórios em módulos separados, com
-              uma experiência única para, auditoria e velocidade
-              operacional.
+              Pagamentos, indicadores e operações internas em módulos separados, com acesso
+              controlado para ADM, Assistente de Benefícios e usuários de Marcas.
             </p>
-            <div className="flex flex-wrap items-center gap-3">
-              <Button
-                size="lg"
-                className="shadow-glow"
-                onClick={() => signIn("google", { callbackUrl: "/hub" })}
-              >
-                Entrar com Google
-              </Button>
-              <Button asChild variant="outline" size="lg">
-                <Link href="/hub">Ver módulos</Link>
-              </Button>
-            </div>
             <div className="grid gap-4 sm:grid-cols-3">
               {highlights.map((item) => (
-                <div
-                  key={item.title}
-                  className="glass-card rounded-2xl p-4"
-                >
+                <div key={item.title} className="glass-card rounded-2xl p-4">
                   <div
                     className={`flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br ${item.gradient}`}
                   >
                     <item.icon className="size-4 text-slate-700" />
                   </div>
-                  <h3 className="mt-3 text-sm font-semibold text-slate-900">
-                    {item.title}
-                  </h3>
-                  <p className="mt-1 text-xs text-slate-500">
-                    {item.description}
-                  </p>
+                  <h3 className="mt-3 text-sm font-semibold text-slate-900">{item.title}</h3>
+                  <p className="mt-1 text-xs text-slate-500">{item.description}</p>
                 </div>
               ))}
             </div>
@@ -100,55 +87,20 @@ export default function HomePage() {
               <circle cx="180" cy="180" r="140" fill="url(#hubGlow)" />
               <circle cx="120" cy="120" r="60" fill="#C8E9E5" fillOpacity="0.45" />
             </svg>
-            <div className="glass-card shadow-glow relative w-full max-w-md rounded-[32px] p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">
-                    Visão geral
-                  </p>
-                  <h2 className="text-lg font-semibold text-slate-900">
-                    Painel operacional
-                  </h2>
-                </div>
-                <span className="rounded-full bg-[#4DBFB3]/15 px-3 py-1 text-xs font-semibold text-[#0C3B6F]">
-                  Atualizado
-                </span>
-              </div>
-              <div className="mt-6 grid gap-4">
-                <div className="rounded-2xl border border-white/50 bg-white/80 p-4">
-                  <div className="flex items-center justify-between text-xs text-slate-500">
-                    <span>Pagamentos em aberto</span>
-                    <span>12</span>
-                  </div>
-                  <div className="mt-3 h-2 w-full rounded-full bg-slate-100">
-                    <div className="h-2 w-3/5 rounded-full bg-gradient-to-r from-[#4DBFB3] to-[#F9A825]" />
-                  </div>
-                </div>
-                <div className="rounded-2xl border border-white/50 bg-white/80 p-4">
-                  <div className="flex items-center justify-between text-xs text-slate-500">
-                    <span>Cartões ativos</span>
-                    <span>84</span>
-                  </div>
-                  <div className="mt-3 flex gap-2">
-                    {[70, 40, 58, 30, 48].map((h, idx) => (
-                      <div
-                        key={`bar-${idx}`}
-                        className="w-4 rounded-full bg-sky-200"
-                        style={{ height: `${h}px` }}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
+
+            <LoginCard
+              callbackUrl={callbackUrl}
+              error={error}
+              showGoogleLogin={false}
+            />
 
             <div className="glass-card float-slow absolute -left-8 top-10 hidden w-44 rounded-2xl p-4 text-sm text-slate-600 shadow-glow lg:block">
-              <div className="font-semibold text-slate-900">Cartões</div>
-              <p className="text-xs text-slate-500">Alocações em dia</p>
+              <div className="font-semibold text-slate-900">Marcas</div>
+              <p className="text-xs text-slate-500">Acesso só aos indicadores permitidos</p>
             </div>
             <div className="glass-card float-delayed absolute -right-6 bottom-6 hidden w-48 rounded-2xl p-4 text-sm text-slate-600 shadow-glow lg:block">
-              <div className="font-semibold text-slate-900">Pagamentos</div>
-              <p className="text-xs text-slate-500">Próximos vencimentos</p>
+              <div className="font-semibold text-slate-900">ADM</div>
+              <p className="text-xs text-slate-500">Gestão completa de usuários e módulos</p>
             </div>
           </div>
         </section>
@@ -156,32 +108,27 @@ export default function HomePage() {
         <section className="grid gap-6 md:grid-cols-3">
           {[
             {
-              title: "Módulo de pagamentos",
+              title: "Acesso por perfis",
               description:
-                "Registro, auditoria e comprovantes organizados em um painel único.",
+                "Permissões separadas para operação completa, apoio de benefícios e consulta por marca.",
               accent: "from-[#F9A825]/35 via-[#FFB347]/15 to-white",
             },
             {
-              title: "Módulo de cartões",
+              title: "Convite por email",
               description:
-                "Gestão de cartões provisórios com cargas e eventos auditáveis.",
+                "O administrador cria o usuário, envia o convite e define o escopo de marcas.",
               accent: "from-[#4DBFB3]/40 via-[#C8E9E5]/20 to-white",
             },
             {
               title: "Governança em tempo real",
               description:
-                "Indicadores e alertas para o time agir antes do vencimento.",
+                "Indicadores e trilha de acesso para manter o ambiente controlado.",
               accent: "from-[#0C3B6F]/15 via-[#4A90E2]/10 to-white",
             },
           ].map((item) => (
-            <div
-              key={item.title}
-              className="glass-card rounded-3xl p-6"
-            >
+            <div key={item.title} className="glass-card rounded-3xl p-6">
               <div className={`h-16 rounded-2xl bg-gradient-to-br ${item.accent}`} />
-              <h3 className="mt-4 text-base font-semibold text-slate-900">
-                {item.title}
-              </h3>
+              <h3 className="mt-4 text-base font-semibold text-slate-900">{item.title}</h3>
               <p className="mt-2 text-sm text-slate-500">{item.description}</p>
             </div>
           ))}

@@ -4,11 +4,16 @@ import type { PropsWithChildren } from "react";
 import { useEffect, useState } from "react";
 import { SidebarNav } from "@/components/sidebar-nav";
 import { Topbar } from "@/components/topbar";
+import { AppUserRole } from "@/lib/user-access";
 import { cn } from "@/lib/utils";
 
 const SIDEBAR_STORAGE_KEY = "hub-beneficios:sidebar-collapsed";
 
-export function AppShell({ children }: PropsWithChildren) {
+type AppShellProps = PropsWithChildren<{
+  role?: AppUserRole;
+}>;
+
+export function AppShell({ children, role = "BENEFITS_ASSISTANT" }: AppShellProps) {
   const [desktopCollapsed, setDesktopCollapsed] = useState(() => {
     if (typeof window === "undefined") return false;
 
@@ -43,6 +48,7 @@ export function AppShell({ children }: PropsWithChildren) {
           <SidebarNav
             variant="sidebar"
             collapsed={desktopCollapsed}
+            role={role}
             onToggleCollapsed={() => setDesktopCollapsed((current) => !current)}
           />
         </aside>
@@ -50,6 +56,7 @@ export function AppShell({ children }: PropsWithChildren) {
         <div className="flex min-w-0 flex-1 flex-col transition-[padding] duration-300 ease-out">
           <Topbar
             mobileNavOpen={mobileNavOpen}
+            role={role}
             onMobileNavOpenChange={setMobileNavOpen}
           />
           <main className="flex-1 px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">

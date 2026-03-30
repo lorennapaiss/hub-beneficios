@@ -1,6 +1,7 @@
 import "server-only";
 import { google } from "googleapis";
 import { env } from "@/lib/env";
+import { getSupabaseAdminClient } from "@/server/supabase";
 import {
   filterBrandsForScope,
   type IndicatorAccessScope,
@@ -200,6 +201,98 @@ type IndicatorsSourceData = {
   dentalRecords: DentalRecord[];
   mealRecords: MealRecord[];
   warnings: string[];
+};
+
+type TransportStagingRow = {
+  competence: string;
+  year: string | number;
+  month: string | number;
+  amount: string | number;
+  economy_amount: string | number;
+  has_economy: boolean | string;
+  employee_id: string | null;
+  employee_name: string | null;
+  brand: string | null;
+  role: string | null;
+};
+
+type HealthStagingRow = {
+  competence: string;
+  year: string | number;
+  month: string | number;
+  premium_amount: string | number;
+  discount_amount: string | number;
+  operator: string | null;
+  brand: string | null;
+  employee_name: string | null;
+  cpf: string | null;
+  employee_id: string | null;
+  holder_type: string | null;
+  status: string | null;
+};
+
+type HealthCopartStagingRow = {
+  competence: string;
+  year: string | number;
+  month: string | number;
+  copart_amount: string | number;
+  brand: string | null;
+  employee_name: string | null;
+  employee_id: string | null;
+};
+
+type HealthDiscountStagingRow = {
+  competence: string;
+  year: string | number;
+  month: string | number;
+  discount_amount: string | number;
+  brand: string | null;
+  employee_name: string | null;
+  normalized_employee_name: string | null;
+  employee_id: string | null;
+  cpf: string | null;
+  role_name: string | null;
+};
+
+type HealthCopartDiscountStagingRow = {
+  competence: string;
+  year: string | number;
+  month: string | number;
+  discount_amount: string | number;
+  brand: string | null;
+  employee_name: string | null;
+  employee_id: string | null;
+  cpf: string | null;
+  role_name: string | null;
+};
+
+type DentalStagingRow = {
+  competence: string;
+  year: string | number;
+  month: string | number;
+  amount: string | number;
+  operator: string | null;
+  brand_totvs: string | null;
+  plan: string | null;
+  employee_id: string | null;
+  employee_name: string | null;
+  holder_name: string | null;
+  holder_cpf: string | null;
+  role: string | null;
+};
+
+type MealStagingRow = {
+  competence: string;
+  year: string | number;
+  month: string | number;
+  amount: string | number;
+  transaction_type: string | null;
+  benefit_name: string | null;
+  brand: string | null;
+  role: string | null;
+  employee_id: string | null;
+  employee_name: string | null;
+  is_last_month: boolean | string;
 };
 
 const BENEFITS: BenefitConfig[] = [
@@ -998,10 +1091,330 @@ const buildRanking = (rows: RawIndicator[], field: "costCenter" | "provider") =>
     .slice(0, 8);
 };
 
+const SUPABASE_PAGE_SIZE = 1000;
+
+const hasSupabaseIndicatorsSource = () =>
+  Boolean(env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY);
+
+const parseBooleanValue = (value: unknown) => {
+  if (typeof value === "boolean") return value;
+  const normalized = String(value ?? "").trim().toLowerCase();
+  return ["true", "1", "sim", "yes", "ativo", "active"].includes(normalized);
+};
+
+const fetchAllSupabaseRows = async <T>(table: string, columns = "*"): Promise<T[]> => {
+  const supabase = getSupabaseAdminClient();
+  const rows: T[] = [];
+  let from = 0;
+
+  while (true) {
+    const to = from + SUPABASE_PAGE_SIZE - 1;
+    const { data, error } = await supabase
+      .from(table)
+      .select(columns)
+      .range(from, to);
+
+    if (error) {
+      throw new Error(`Falha ao ler ${table} no Supabase: ${error.message}`);
+    }
+
+    const batch = (data ?? []) as T[];
+    rows.push(...batch);
+
+    if (batch.length < SUPABASE_PAGE_SIZE) {
+      break;
+    }
+
+    from += SUPABASE_PAGE_SIZE;
+  }
+
+  return rows;
+};
+
+const mapTransportSupabaseRows = (rows: TransportStagingRow[]): TransportRecord[] =>
+  rows.map((row) => ({
+    competence: row.competence,
+    year: Number(row.year),
+    month: Number(row.month),
+    amount: Number(row.amount ?? 0),
+    economyAmount: Number(row.economy_amount ?? 0),
+    hasEconomy: parseBooleanValue(row.has_economy),
+    employeeId: row.employee_id ?? "",
+    employeeName: row.employee_name ?? "",
+    brand: row.brand ?? "Nao informado",
+    role: row.role ?? "Nao informado",
+  }));
+
+const mapHealthSupabaseRows = (
+  premiumRows: HealthStagingRow[],
+  discountRows: HealthDiscountStagingRow[],
+): HealthRecord[] => [
+  ...premiumRows.map((row) => ({
+    competence: row.competence,
+    year: Number(row.year),
+    month: Number(row.month),
+    premiumAmount: Number(row.premium_amount ?? 0),
+    discountAmount: Number(row.discount_amount ?? 0),
+    brand: row.brand ?? "Nao informado",
+    role: row.operator ?? "Nao informado",
+    employeeId: row.employee_id || row.cpf || "",
+    employeeName: row.employee_name ?? "",
+    status: row.status ?? "Nao informado",
+    holderType: row.holder_type ?? "Nao informado",
+  })),
+  ...discountRows.map((row) => ({
+    competence: row.competence,
+    year: Number(row.year),
+    month: Number(row.month),
+    premiumAmount: 0,
+    discountAmount: Number(row.discount_amount ?? 0),
+    brand: row.brand ?? "Nao informado",
+    role: row.role_name ?? "Nao informado",
+    employeeId: row.employee_id || row.cpf || "",
+    employeeName: row.normalized_employee_name || row.employee_name || "",
+    status: "Nao informado",
+    holderType: "Nao informado",
+  })),
+];
+
+const mapHealthCopartSupabaseRows = (
+  copartRows: HealthCopartStagingRow[],
+  discountRows: HealthCopartDiscountStagingRow[],
+): HealthCopartRecord[] => [
+  ...copartRows.map((row) => ({
+    competence: row.competence,
+    year: Number(row.year),
+    month: Number(row.month),
+    copartAmount: Number(row.copart_amount ?? 0),
+    copartDiscountAmount: 0,
+    brand: row.brand ?? "Nao informado",
+    employeeId: row.employee_id ?? "",
+    employeeName: row.employee_name ?? "",
+  })),
+  ...discountRows.map((row) => ({
+    competence: row.competence,
+    year: Number(row.year),
+    month: Number(row.month),
+    copartAmount: 0,
+    copartDiscountAmount: Number(row.discount_amount ?? 0),
+    brand: row.brand ?? "Nao informado",
+    employeeId: row.employee_id || row.cpf || "",
+    employeeName: row.employee_name ?? "",
+  })),
+];
+
+const mapDentalSupabaseRows = (rows: DentalStagingRow[]): DentalRecord[] =>
+  rows.map((row) => ({
+    competence: row.competence,
+    year: Number(row.year),
+    month: Number(row.month),
+    amount: Number(row.amount ?? 0),
+    operator: row.operator ?? "Nao informado",
+    brand: row.brand_totvs ?? "Nao informado",
+    plan: row.plan ?? "Nao informado",
+    employeeId: row.employee_id ?? "",
+    employeeName: row.employee_name ?? "",
+    holderName: row.holder_name ?? "",
+    holderCpf: row.holder_cpf ?? "",
+    role: row.role ?? "Nao informado",
+  }));
+
+const mapMealSupabaseRows = (rows: MealStagingRow[]): MealRecord[] =>
+  rows.map((row) => ({
+    competence: row.competence,
+    year: Number(row.year),
+    month: Number(row.month),
+    amount: Number(row.amount ?? 0),
+    benefit: row.benefit_name ?? "Nao informado",
+    personType: row.transaction_type ?? "Nao informado",
+    brand: row.brand ?? "Nao informado",
+    role: row.role ?? "Nao informado",
+    employeeId: row.employee_id ?? "",
+    employeeName: row.employee_name ?? "Nao informado",
+    isLastMonth: parseBooleanValue(row.is_last_month),
+  }));
+
+const mapHealthMainToSupabaseRaw = (rows: HealthRecord[]): RawIndicator[] =>
+  rows
+    .filter((row) => row.premiumAmount > 0)
+    .map((row) => ({
+      benefit: "health",
+      competence: row.competence,
+      year: row.year,
+      month: row.month,
+      amount: row.premiumAmount,
+      discountAmount: row.discountAmount,
+      headcount: 1,
+      costCenter: row.brand || "Nao informado",
+      provider: "Plano de Saude",
+      brand: row.brand || "Nao informado",
+      role: row.role || "Nao informado",
+      employeeId: row.employeeId,
+      employeeName: row.employeeName,
+      hasEconomy: false,
+      economyAmount: 0,
+    }));
+
+const mapDentalSupabaseToRaw = (rows: DentalRecord[]): RawIndicator[] =>
+  rows.map((row) => ({
+    benefit: "dental",
+    competence: row.competence,
+    year: row.year,
+    month: row.month,
+    amount: row.amount,
+    discountAmount: 0,
+    headcount: 1,
+    costCenter: row.brand || "Nao informado",
+    provider: row.operator || "Nao informado",
+    brand: row.brand || "Nao informado",
+    role: row.role || "Nao informado",
+    employeeId: row.employeeId,
+    employeeName: row.employeeName,
+    hasEconomy: false,
+    economyAmount: 0,
+  }));
+
+const mapMealSupabaseToRaw = (rows: MealRecord[]): RawIndicator[] =>
+  rows.map((row) => ({
+    benefit: "meal",
+    competence: row.competence,
+    year: row.year,
+    month: row.month,
+    amount: row.amount,
+    discountAmount: 0,
+    headcount: 1,
+    costCenter: row.brand || "Nao informado",
+    provider: row.benefit || "Nao informado",
+    brand: row.brand || "Nao informado",
+    role: row.role || "Nao informado",
+    employeeId: row.employeeId,
+    employeeName: row.employeeName,
+    hasEconomy: false,
+    economyAmount: 0,
+  }));
+
+const mapTransportSupabaseToRaw = (rows: TransportRecord[]): RawIndicator[] =>
+  rows.map((row) => ({
+    benefit: "transport",
+    competence: row.competence,
+    year: row.year,
+    month: row.month,
+    amount: row.amount,
+    discountAmount: 0,
+    headcount: 1,
+    costCenter: row.brand || "Nao informado",
+    provider: "Vale Transporte",
+    brand: row.brand || "Nao informado",
+    role: row.role || "Nao informado",
+    employeeId: row.employeeId,
+    employeeName: row.employeeName,
+    hasEconomy: row.hasEconomy,
+    economyAmount: row.economyAmount,
+  }));
+
+const getIndicatorsSourceDataFromSupabase = async (): Promise<IndicatorsSourceData> => {
+  const warnings: string[] = [];
+
+  const [
+    transportRows,
+    healthRows,
+    healthCopartRows,
+    healthDiscountRows,
+    healthCopartDiscountRows,
+    dentalRows,
+    mealRows,
+  ] = await Promise.all([
+    fetchAllSupabaseRows<TransportStagingRow>("indicator_transport_staging").catch((error) => {
+      warnings.push(error instanceof Error ? error.message : "Falha ao ler VT no Supabase.");
+      return [];
+    }),
+    fetchAllSupabaseRows<HealthStagingRow>("indicator_health_staging").catch((error) => {
+      warnings.push(error instanceof Error ? error.message : "Falha ao ler saude no Supabase.");
+      return [];
+    }),
+    fetchAllSupabaseRows<HealthCopartStagingRow>("indicator_health_copart_staging").catch(
+      (error) => {
+        warnings.push(
+          error instanceof Error ? error.message : "Falha ao ler copart no Supabase.",
+        );
+        return [];
+      },
+    ),
+    fetchAllSupabaseRows<HealthDiscountStagingRow>(
+      "indicator_health_monthly_discounts_staging",
+    ).catch((error) => {
+      warnings.push(
+        error instanceof Error ? error.message : "Falha ao ler descontos de mensalidade.",
+      );
+      return [];
+    }),
+    fetchAllSupabaseRows<HealthCopartDiscountStagingRow>(
+      "indicator_health_copart_discounts_staging",
+    ).catch((error) => {
+      warnings.push(
+        error instanceof Error ? error.message : "Falha ao ler descontos de coparticipacao.",
+      );
+      return [];
+    }),
+    fetchAllSupabaseRows<DentalStagingRow>("indicator_dental_staging").catch((error) => {
+      warnings.push(
+        error instanceof Error ? error.message : "Falha ao ler odontologico no Supabase.",
+      );
+      return [];
+    }),
+    fetchAllSupabaseRows<MealStagingRow>("indicator_meal_staging").catch((error) => {
+      warnings.push(error instanceof Error ? error.message : "Falha ao ler refeicao no Supabase.");
+      return [];
+    }),
+  ]);
+
+  const transportRecords = mapTransportSupabaseRows(transportRows);
+  const healthRecords = mapHealthSupabaseRows(healthRows, healthDiscountRows);
+  const healthCopartRecords = mapHealthCopartSupabaseRows(
+    healthCopartRows,
+    healthCopartDiscountRows,
+  );
+  const dentalRecords = mapDentalSupabaseRows(dentalRows);
+  const mealRecords = mapMealSupabaseRows(mealRows);
+
+  return {
+    records: [
+      ...mapHealthMainToSupabaseRaw(healthRecords),
+      ...mapDentalSupabaseToRaw(dentalRecords),
+      ...mapTransportSupabaseToRaw(transportRecords),
+      ...mapMealSupabaseToRaw(mealRecords),
+    ],
+    healthRecords,
+    healthCopartRecords,
+    dentalRecords,
+    mealRecords,
+    warnings,
+  };
+};
+
+const buildEmptyIndicatorsSourceData = (
+  warning: string,
+): IndicatorsSourceData => ({
+  records: [],
+  healthRecords: [],
+  healthCopartRecords: [],
+  dentalRecords: [],
+  mealRecords: [],
+  warnings: [warning],
+});
+
 export const getIndicatorsDashboardDataUncached = async (): Promise<IndicatorsDashboardData> => {
+  if (hasSupabaseIndicatorsSource()) {
+    return buildDashboardFromSource(await getIndicatorsSourceDataFromSupabase());
+  }
+
   const hasAnySpreadsheet = BENEFITS.some((benefit) => Boolean(benefit.spreadsheetId));
   if (!hasAnySpreadsheet) {
-    throw new Error("Configure INDICATORS_SHEETS_ID ou INDICATORS_*_SHEETS_ID.");
+    return buildDashboardFromSource(
+      buildEmptyIndicatorsSourceData(
+        "Indicadores em migracao: nenhuma fonte de dados configurada ainda.",
+      ),
+    );
   }
 
   const warnings: string[] = [];
@@ -1398,9 +1811,15 @@ const buildOverviewFromRecords = (
 };
 
 const getIndicatorsSourceDataUncached = async (): Promise<IndicatorsSourceData> => {
+  if (hasSupabaseIndicatorsSource()) {
+    return getIndicatorsSourceDataFromSupabase();
+  }
+
   const hasAnySpreadsheet = BENEFITS.some((benefit) => Boolean(benefit.spreadsheetId));
   if (!hasAnySpreadsheet) {
-    throw new Error("Configure INDICATORS_SHEETS_ID ou INDICATORS_*_SHEETS_ID.");
+    return buildEmptyIndicatorsSourceData(
+      "Indicadores em migracao: nenhuma fonte de dados configurada ainda.",
+    );
   }
 
   const warnings: string[] = [];

@@ -1,0 +1,5 @@
+﻿pj_financial_history_id,pj_id,data_vigencia,valor_mensal_contratado,valor_ajuda_custo,valor_total_mensal_previsto,tipo_remuneracao,observacoes,created_at,created_by
+53dbe8b4-98e7-4606-bf53-1d78824feacf,5b08682d-c277-4832-bc9f-2e7b58a04296,2025-10-27 00:00:00,6400.0,0.0,0.0,FIXO,,2026-03-23T13:45:53.434Z,lorenna.nascimento@raizeducacao.com.br
+ce5f8e43-8249-48f7-8718-87e14028996e,5b08682d-c277-4832-bc9f-2e7b58a04296,2025-10-27 00:00:00,0.0,0.0,0.0,FIXO,,2026-03-23T13:56:38.820Z,lorenna.nascimento@raizeducacao.com.br
+d77ce6be-1d38-47a1-acc8-9db0ed8ed028,5b08682d-c277-4832-bc9f-2e7b58a04296,2025-10-27 00:00:00,0.0,0.0,0.0,FIXO,,2026-03-23T13:59:12.275Z,lorenna.nascimento@raizeducacao.com.br
+532b5534-d5dc-4ca0-9d30-415372a7ddfd,5b08682d-c277-4832-bc9f-2e7b58a04296,2025-10-27 00:00:00,0.0,0.0,0.0,FIXO,,2026-03-23T14:06:22.785Z,lorenna.nascimento@raizeducacao.com.br

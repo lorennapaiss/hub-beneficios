@@ -6,13 +6,19 @@ import { SidebarNav } from "@/components/sidebar-nav";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { AppUserRole } from "@/lib/user-access";
 
 type TopbarProps = {
   mobileNavOpen: boolean;
+  role?: AppUserRole;
   onMobileNavOpenChange: (open: boolean) => void;
 };
 
-export function Topbar({ mobileNavOpen, onMobileNavOpenChange }: TopbarProps) {
+export function Topbar({
+  mobileNavOpen,
+  role = "BENEFITS_ASSISTANT",
+  onMobileNavOpenChange,
+}: TopbarProps) {
   const { data: session } = useSession();
   const user = session?.user;
   const userLabel = user?.name ?? user?.email ?? "Usuário";
@@ -40,7 +46,11 @@ export function Topbar({ mobileNavOpen, onMobileNavOpenChange }: TopbarProps) {
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="p-0">
-            <SidebarNav variant="sheet" onNavigate={() => onMobileNavOpenChange(false)} />
+            <SidebarNav
+              variant="sheet"
+              role={role}
+              onNavigate={() => onMobileNavOpenChange(false)}
+            />
           </SheetContent>
         </Sheet>
 

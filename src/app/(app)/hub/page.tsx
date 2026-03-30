@@ -1,8 +1,12 @@
 import Link from "next/link";
 import { ArrowRight, CreditCard, FileText, Receipt, Users, Wallet } from "lucide-react";
+import { getServerSession } from "next-auth";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { authOptions, resolveAuthenticatedEmail } from "@/lib/auth";
+import { canAccessAppPath } from "@/lib/user-access";
+import { getUserAccessProfile } from "@/server/user-access";
 
 const quickActions = [
   {
@@ -60,7 +64,22 @@ const modules = [
   },
 ];
 
-export default function HubPage() {
+export default async function HubPage() {
+  const session = await getServerSession(authOptions);
+  const profile = await getUserAccessProfile(resolveAuthenticatedEmail(session?.user?.email));
+  const role = profile?.role ?? "BENEFITS_ASSISTANT";
+  const filteredModules = modules.filter((module) => canAccessAppPath(module.href, role));
+  const filteredQuickActions =
+    role === "BRAND"
+      ? [
+          {
+            title: "Abrir indicadores",
+            description: "Acompanhar somente os indicadores liberados para suas marcas.",
+            href: "/beneficios/indicadores",
+          },
+        ]
+      : quickActions;
+
   return (
     <div className="page-section">
       <PageHeader
@@ -88,7 +107,7 @@ export default function HubPage() {
           </div>
 
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            {quickActions.map((action) => (
+            {filteredQuickActions.map((action) => (
               <Link
                 key={action.title}
                 href={action.href}
@@ -132,13 +151,15 @@ export default function HubPage() {
             ))}
           </div>
           <Button asChild className="mt-5 w-full">
-            <Link href="/dashboard">Abrir visão geral</Link>
+            <Link href={role === "BRAND" ? "/beneficios/indicadores" : "/dashboard"}>
+              {role === "BRAND" ? "Abrir indicadores" : "Abrir visão geral"}
+            </Link>
           </Button>
         </div>
       </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {modules.map((module) => {
+        {filteredModules.map((module) => {
           const Icon = module.icon;
           return (
             <Link

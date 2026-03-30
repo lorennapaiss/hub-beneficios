@@ -4,18 +4,19 @@ import { PHASE_PRODUCTION_BUILD } from "next/constants";
 
 const EnvSchema = z
   .object({
-    GOOGLE_CLIENT_ID: z.string().min(1, "GOOGLE_CLIENT_ID nao definido."),
-    GOOGLE_CLIENT_SECRET: z.string().min(1, "GOOGLE_CLIENT_SECRET nao definido."),
-    NEXTAUTH_SECRET: z.string().min(1, "NEXTAUTH_SECRET nao definido."),
+    GOOGLE_CLIENT_ID: z.string().optional(),
+    GOOGLE_CLIENT_SECRET: z.string().optional(),
+    NEXTAUTH_SECRET: z.string().optional(),
+    DEV_LOGIN_EMAIL: z.string().optional(),
+    SUPABASE_URL: z.string().url("SUPABASE_URL invalido.").optional(),
+    SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
     ALLOWED_EMAILS: z.string().optional(),
     ALLOWED_DOMAIN: z.string().optional(),
-    ADMIN_EMAILS: z.string().min(1, "ADMIN_EMAILS nao definido."),
-    SHEETS_SPREADSHEET_ID: z.string().min(1, "SHEETS_SPREADSHEET_ID nao definido."),
-    GOOGLE_SERVICE_ACCOUNT_EMAIL: z
-      .string()
-      .min(1, "GOOGLE_SERVICE_ACCOUNT_EMAIL nao definido."),
-    GOOGLE_PRIVATE_KEY: z.string().min(1, "GOOGLE_PRIVATE_KEY nao definido."),
-    DRIVE_FOLDER_ID: z.string().min(1, "DRIVE_FOLDER_ID nao definido."),
+    ADMIN_EMAILS: z.string().optional(),
+    SHEETS_SPREADSHEET_ID: z.string().optional(),
+    GOOGLE_SERVICE_ACCOUNT_EMAIL: z.string().optional(),
+    GOOGLE_PRIVATE_KEY: z.string().optional(),
+    DRIVE_FOLDER_ID: z.string().optional(),
     PAYMENTS_SHEETS_ID: z.string().optional(),
     PAYMENTS_DRIVE_FOLDER_ID: z.string().optional(),
     INDICATORS_SHEETS_ID: z.string().optional(),
@@ -39,14 +40,7 @@ const EnvSchema = z
     COMPETENCIA_FOLDER_PATTERN: z.string().optional(),
     ENABLE_SEED: z.string().optional(),
   })
-  .superRefine((data, ctx) => {
-    if (!data.ALLOWED_EMAILS && !data.ALLOWED_DOMAIN) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Defina ALLOWED_EMAILS ou ALLOWED_DOMAIN.",
-      });
-    }
-  });
+  .superRefine(() => {});
 
 const isBuildPhase = process.env.NEXT_PHASE === PHASE_PRODUCTION_BUILD;
 
@@ -70,6 +64,16 @@ const get = <K extends keyof z.infer<typeof EnvSchema>>(key: K) =>
 export const env = {
   ...(validatedData ?? (process.env as unknown as z.infer<typeof EnvSchema>)),
   GOOGLE_PRIVATE_KEY: (get("GOOGLE_PRIVATE_KEY") ?? "").replace(/\\n/g, "\n"),
+  GOOGLE_CLIENT_ID: get("GOOGLE_CLIENT_ID") ?? "",
+  GOOGLE_CLIENT_SECRET: get("GOOGLE_CLIENT_SECRET") ?? "",
+  NEXTAUTH_SECRET: get("NEXTAUTH_SECRET") ?? "",
+  DEV_LOGIN_EMAIL: get("DEV_LOGIN_EMAIL") ?? "",
+  ADMIN_EMAILS: get("ADMIN_EMAILS") ?? "",
+  SHEETS_SPREADSHEET_ID: get("SHEETS_SPREADSHEET_ID") ?? "",
+  GOOGLE_SERVICE_ACCOUNT_EMAIL: get("GOOGLE_SERVICE_ACCOUNT_EMAIL") ?? "",
+  DRIVE_FOLDER_ID: get("DRIVE_FOLDER_ID") ?? "",
+  ALLOWED_EMAILS: get("ALLOWED_EMAILS") ?? "",
+  ALLOWED_DOMAIN: get("ALLOWED_DOMAIN") ?? "",
   LOW_BALANCE_THRESHOLD: get("LOW_BALANCE_THRESHOLD") ?? "0",
   INDICATORS_SHEETS_ID:
     get("INDICATORS_SHEETS_ID") ?? get("PAYMENTS_SHEETS_ID") ?? get("SHEETS_SPREADSHEET_ID") ?? "",

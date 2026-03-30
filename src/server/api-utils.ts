@@ -1,7 +1,8 @@
 import "server-only";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions, isAdminEmail, isAllowedEmail } from "@/lib/auth";
+import { authOptions, isAllowedEmail, resolveAuthenticatedEmail } from "@/lib/auth";
+import { getUserAccessProfile } from "@/server/user-access";
 
 export const parseNumber = (value: string | null | undefined, fallback: number) => {
   if (!value) return fallback;
@@ -10,19 +11,18 @@ export const parseNumber = (value: string | null | undefined, fallback: number) 
 };
 
 export const getActorEmail = (session: { user?: { email?: string | null } } | null) => {
-  const email = session?.user?.email;
+  const email = resolveAuthenticatedEmail(session?.user?.email);
   if (!email) {
     throw new Error("Session missing actor email after auth check.");
   }
   return email;
 };
 
-export const getActorRole = (email?: string | null) =>
-  isAdminEmail(email) ? ("ADMIN" as const) : ("USER" as const);
+export const getActorRole = () => "USER" as const;
 
 export const requireAllowedUser = async () => {
   const session = await getServerSession(authOptions);
-  const email = session?.user?.email ?? null;
+  const email = resolveAuthenticatedEmail(session?.user?.email);
 
   if (!email) {
     return {
@@ -32,7 +32,8 @@ export const requireAllowedUser = async () => {
     };
   }
 
-  if (!isAllowedEmail(email)) {
+  const profile = await getUserAccessProfile(email);
+  if (!isAllowedEmail(email) && !profile) {
     return {
       session: null,
       actorRole: "USER" as const,
@@ -40,15 +41,16 @@ export const requireAllowedUser = async () => {
     };
   }
 
-  return { session, actorRole: getActorRole(email), response: null };
+  return { session, actorRole: getActorRole(), response: null };
 };
 
 export const requireAdminUser = async () => {
   const { session, response, actorRole } = await requireAllowedUser();
   if (response) return { session: null, actorRole, response };
 
-  const email = session?.user?.email ?? null;
-  if (!isAdminEmail(email)) {
+  const email = resolveAuthenticatedEmail(session?.user?.email);
+  const profile = await getUserAccessProfile(email);
+  if (profile?.role !== "ADMIN") {
     return {
       session: null,
       actorRole,
@@ -56,7 +58,7 @@ export const requireAdminUser = async () => {
     };
   }
 
-  return { session, actorRole: getActorRole(email), response: null };
+  return { session, actorRole: getActorRole(), response: null };
 };
 
 export const handleApiError = (error: unknown, context?: string) => {

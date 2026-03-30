@@ -2,16 +2,23 @@ import "server-only";
 
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
-import { authOptions, isAdminEmail } from "@/lib/auth";
+import { authOptions, resolveAuthenticatedEmail } from "@/lib/auth";
 import { createUuid } from "@/lib/uuid";
+import { AppUserRole } from "@/lib/user-access";
+import {
+  buildUserAccessProfile,
+  fetchUserAccessRows,
+  normalizeEmail,
+} from "@/server/user-access";
 import { appendRow, getRowsCached } from "@/server/sheets";
 
 export type IndicatorAccessScope = {
   email: string;
   isAdmin: boolean;
+  userRole: AppUserRole;
   allowedBrands: string[];
   canAccess: boolean;
-  reason: "ADMIN" | "BRAND_SCOPE" | "NO_BRAND_ACCESS";
+  reason: "ADMIN" | "ASSISTANT" | "BRAND_SCOPE" | "NO_BRAND_ACCESS";
 };
 
 type UserBrandAccessRow = {
@@ -27,8 +34,7 @@ type UserBrandAccessRow = {
 
 const USER_BRAND_ACCESS_SHEET = "user_brand_access";
 const ACCESS_CACHE_TTL_MS = 60_000;
-
-export const normalizeEmail = (value?: string | null) => value?.trim().toLowerCase() ?? "";
+const GLOBAL_BRAND_SCOPE = "all";
 
 export const normalizeBrandScopeValue = (value?: string | null) =>
   value
@@ -37,51 +43,58 @@ export const normalizeBrandScopeValue = (value?: string | null) =>
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase() ?? "";
 
-const isTruthy = (value?: string | null) => {
-  const normalized = (value ?? "").trim().toLowerCase();
-  if (!normalized) return true;
-  return ["true", "1", "sim", "yes", "ativo", "active"].includes(normalized);
+const isGlobalBrandScope = (value?: string | null) => {
+  const normalized = normalizeBrandScopeValue(value);
+  return normalized === GLOBAL_BRAND_SCOPE || normalized === "*";
 };
-
-const getRowUserIdentity = (row: UserBrandAccessRow) =>
-  normalizeEmail(row.user_email || row.user_id);
-
-const getRowBrandValue = (row: UserBrandAccessRow) =>
-  row.brand_name?.trim() || row.brand_code?.trim() || row.brand_id?.trim() || "";
 
 export const buildIndicatorAccessScope = (
   email: string,
   rows: UserBrandAccessRow[],
 ): IndicatorAccessScope => {
+  const profile = buildUserAccessProfile(email, rows);
   const normalizedEmail = normalizeEmail(email);
 
-  if (isAdminEmail(normalizedEmail)) {
+  if (!profile) {
+    return {
+      email: normalizedEmail,
+      isAdmin: false,
+      userRole: "BRAND",
+      allowedBrands: [],
+      canAccess: false,
+      reason: "NO_BRAND_ACCESS",
+    };
+  }
+
+  if (profile.role === "ADMIN") {
     return {
       email: normalizedEmail,
       isAdmin: true,
+      userRole: "ADMIN",
       allowedBrands: [],
       canAccess: true,
       reason: "ADMIN",
     };
   }
 
-  const allowedBrands = Array.from(
-    new Map(
-      rows
-        .filter((row) => isTruthy(row.is_active))
-        .filter((row) => getRowUserIdentity(row) === normalizedEmail)
-        .map((row) => {
-          const brand = getRowBrandValue(row);
-          return [normalizeBrandScopeValue(brand), brand] as const;
-        })
-        .filter((entry) => entry[0]),
-    ).values(),
-  ).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  if (profile.role === "BENEFITS_ASSISTANT") {
+    return {
+      email: normalizedEmail,
+      isAdmin: false,
+      userRole: "BENEFITS_ASSISTANT",
+      allowedBrands: ["ALL"],
+      canAccess: true,
+      reason: "ASSISTANT",
+    };
+  }
+
+  const allowedBrands = profile.allowedBrands.sort((a, b) => a.localeCompare(b, "pt-BR"));
 
   if (allowedBrands.length === 0) {
     return {
       email: normalizedEmail,
       isAdmin: false,
+      userRole: "BRAND",
       allowedBrands: [],
       canAccess: false,
       reason: "NO_BRAND_ACCESS",
@@ -91,6 +104,7 @@ export const buildIndicatorAccessScope = (
   return {
     email: normalizedEmail,
     isAdmin: false,
+    userRole: "BRAND",
     allowedBrands,
     canAccess: true,
     reason: "BRAND_SCOPE",
@@ -98,6 +112,22 @@ export const buildIndicatorAccessScope = (
 };
 
 const listUserBrandAccess = async () => {
+  try {
+    const data = await fetchUserAccessRows();
+
+    if (data.length > 0) {
+      return data.map((row) => ({
+        ...row,
+        is_active:
+          typeof row.is_active === "boolean"
+            ? String(row.is_active)
+            : (row.is_active ?? undefined),
+      })) as UserBrandAccessRow[];
+    }
+  } catch {
+    // Fall back to Sheets while Supabase is being adopted.
+  }
+
   try {
     return (await getRowsCached(
       USER_BRAND_ACCESS_SHEET,
@@ -123,6 +153,9 @@ export const isBrandAllowedForScope = (
   scope: Pick<IndicatorAccessScope, "isAdmin" | "allowedBrands">,
 ) => {
   if (scope.isAdmin) return true;
+  if (scope.allowedBrands.some((allowedBrand) => isGlobalBrandScope(allowedBrand))) {
+    return true;
+  }
   const normalizedBrand = normalizeBrandScopeValue(brand);
   return scope.allowedBrands.some(
     (allowedBrand) => normalizeBrandScopeValue(allowedBrand) === normalizedBrand,
@@ -164,7 +197,7 @@ export const logIndicatorsAuthorizationEvent = async ({
 
 export const requireIndicatorsAccess = async () => {
   const session = await getServerSession(authOptions);
-  const email = session?.user?.email ?? null;
+  const email = resolveAuthenticatedEmail(session?.user?.email);
 
   if (!email) {
     return {

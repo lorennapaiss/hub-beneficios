@@ -12,6 +12,7 @@ import {
   Users,
   Wallet,
 } from "lucide-react";
+import { AppUserRole, canAccessAppPath } from "@/lib/user-access";
 
 export type NavItem = {
   title: string;
@@ -87,4 +88,27 @@ export const navItems: NavItem[] = [
     icon: Settings,
   },
 ];
+
+export const getNavItemsForRole = (role: AppUserRole) =>
+  navItems
+    .map((item) => {
+      if (item.children?.length) {
+        const children = item.children.filter((child) =>
+          child.href ? canAccessAppPath(child.href, role) : false,
+        );
+
+        if (children.length === 0) {
+          return null;
+        }
+
+        return { ...item, children };
+      }
+
+      if (item.href && !canAccessAppPath(item.href, role)) {
+        return null;
+      }
+
+      return item;
+    })
+    .filter((item): item is NavItem => Boolean(item));
 

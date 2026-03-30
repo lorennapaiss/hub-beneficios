@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { ArrowRight, BarChart2, CreditCard, FileText, Wallet } from "lucide-react";
+import { getServerSession } from "next-auth";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
+import { authOptions, resolveAuthenticatedEmail } from "@/lib/auth";
+import { canAccessAppPath } from "@/lib/user-access";
+import { getUserAccessProfile } from "@/server/user-access";
 
 const features = [
   {
@@ -31,7 +35,12 @@ const features = [
   },
 ];
 
-export default function BeneficiosPage() {
+export default async function BeneficiosPage() {
+  const session = await getServerSession(authOptions);
+  const profile = await getUserAccessProfile(resolveAuthenticatedEmail(session?.user?.email));
+  const role = profile?.role ?? "BENEFITS_ASSISTANT";
+  const filteredFeatures = features.filter((feature) => canAccessAppPath(feature.href, role));
+
   return (
     <div className="page-section">
       <PageHeader
@@ -41,7 +50,7 @@ export default function BeneficiosPage() {
       />
 
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-        {features.map((feature) => {
+        {filteredFeatures.map((feature) => {
           const Icon = feature.icon;
           return (
             <Link

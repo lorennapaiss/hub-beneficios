@@ -1,15 +1,17 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { UserManagement } from "@/components/admin/user-management";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AuditTable } from "@/components/admin/audit-table";
 import { Button } from "@/components/ui/button";
 import type { AuditRow } from "@/server/audit";
 
 type AdminTabsProps = {
-  defaultTab: "audit" | "config";
+  defaultTab: "audit" | "config" | "users";
   auditRows: AuditRow[];
   auditTotal: number;
+  auditLoadError?: string | null;
   limit: number;
   offset: number;
   filters: {
@@ -19,6 +21,19 @@ type AdminTabsProps = {
     period?: string;
   };
   envStatus: { label: string; ok: boolean }[];
+  users: {
+    id: string;
+    email: string;
+    fullName: string;
+    accessRole: "ADMIN" | "BENEFITS_ASSISTANT" | "BRAND";
+    brands: string[];
+    status: "active" | "access-only";
+    mustChangePassword: boolean;
+    createdAt: string | null;
+    lastSignInAt: string | null;
+    emailConfirmedAt: string | null;
+  }[];
+  usersLoadError?: string | null;
 };
 
 const ENTITY_TYPES = [
@@ -44,12 +59,15 @@ export function AdminTabs({
   defaultTab,
   auditRows,
   auditTotal,
+  auditLoadError,
   limit,
   offset,
   filters,
   envStatus,
+  users,
+  usersLoadError,
 }: AdminTabsProps) {
-  const [tab, setTab] = useState<"audit" | "config">(defaultTab);
+  const [tab, setTab] = useState<"audit" | "config" | "users">(defaultTab);
   const totalPages = Math.max(Math.ceil(auditTotal / limit), 1);
   const currentPage = Math.floor(offset / limit) + 1;
 
@@ -73,9 +91,10 @@ export function AdminTabs({
   }, [filters, limit, offset, tab]);
 
   return (
-    <Tabs value={tab} onValueChange={(value) => setTab(value as "audit" | "config")}>
+    <Tabs value={tab} onValueChange={(value) => setTab(value as "audit" | "config" | "users")}>
       <TabsList className="w-fit">
         <TabsTrigger value="audit">Auditoria</TabsTrigger>
+        <TabsTrigger value="users">Usuarios</TabsTrigger>
         <TabsTrigger value="config">Config</TabsTrigger>
       </TabsList>
 
@@ -129,6 +148,12 @@ export function AdminTabs({
           <Button type="submit">Filtrar</Button>
         </form>
 
+        {auditLoadError ? (
+          <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+            {auditLoadError}
+          </div>
+        ) : null}
+
         <AuditTable rows={auditRows} />
 
         <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
@@ -154,6 +179,10 @@ export function AdminTabs({
             </Button>
           </div>
         </div>
+      </TabsContent>
+
+      <TabsContent value="users">
+        <UserManagement initialUsers={users} loadError={usersLoadError} />
       </TabsContent>
 
       <TabsContent value="config">

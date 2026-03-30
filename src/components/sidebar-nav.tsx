@@ -5,12 +5,14 @@ import { ChevronDown, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { navItems } from "@/lib/navigation";
+import { getNavItemsForRole } from "@/lib/navigation";
+import { AppUserRole } from "@/lib/user-access";
 import { cn } from "@/lib/utils";
 
 type SidebarNavProps = {
   variant?: "sidebar" | "sheet";
   collapsed?: boolean;
+  role?: AppUserRole;
   onToggleCollapsed?: () => void;
   onNavigate?: () => void;
 };
@@ -28,10 +30,12 @@ const isGroupActive = (pathname: string, children: { href?: string }[] | undefin
 export function SidebarNav({
   variant = "sidebar",
   collapsed = false,
+  role = "BENEFITS_ASSISTANT",
   onToggleCollapsed,
   onNavigate,
 }: SidebarNavProps) {
   const pathname = usePathname();
+  const navItems = getNavItemsForRole(role);
   const isDesktopSidebar = variant === "sidebar";
   const isCollapsed = isDesktopSidebar && collapsed;
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});

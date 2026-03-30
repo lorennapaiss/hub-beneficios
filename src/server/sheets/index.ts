@@ -2,6 +2,7 @@ import "server-only";
 import { google, sheets_v4 } from "googleapis";
 import { env } from "@/lib/env";
 import { getCache, invalidateCache, setCache } from "@/server/cache";
+import { getSupabaseAdminClient } from "@/server/supabase";
 
 type QueryFilters = Record<string, string | number | boolean | null | undefined>;
 
@@ -13,6 +14,20 @@ export type QueryOptions = {
 };
 
 const SCOPES = ["https://www.googleapis.com/auth/spreadsheets"];
+const SUPABASE_PAGE_SIZE = 1000;
+const SUPABASE_TABLES = new Set([
+  "people",
+  "cards",
+  "loads",
+  "allocations",
+  "events",
+  "attachments",
+  "audit_log",
+  "pjs",
+  "pj_financial_history",
+  "pj_benefits",
+  "pj_allocations",
+]);
 
 const sanitizeError = (error: unknown, message: string) => {
   if (error instanceof Error) {
@@ -25,6 +40,25 @@ const normalizeKey = (value: string) => value.trim();
 
 const normalizeValue = (value: string | undefined | null) =>
   (value ?? "").toString().trim();
+
+const stringifyValue = (value: unknown) => {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "boolean") return value ? "true" : "false";
+  return String(value);
+};
+
+const serializeRowObject = (rowObject: Record<string, unknown>) =>
+  Object.fromEntries(
+    Object.entries(rowObject).map(([key, value]) => [key, stringifyValue(value)])
+  );
+
+const normalizeSupabaseRow = (row: Record<string, unknown>) =>
+  Object.fromEntries(
+    Object.entries(row).map(([key, value]) => [key, stringifyValue(value)])
+  ) as Record<string, string>;
+
+const shouldUseSupabase = (sheetName: string) =>
+  Boolean(env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY && SUPABASE_TABLES.has(sheetName));
 
 const toColumnLetter = (index: number) => {
   let result = "";
@@ -52,12 +86,6 @@ const mapRow = (headers: string[], row: string[]) =>
     acc[header] = row[index] ?? "";
     return acc;
   }, {});
-
-const stringifyValue = (value: unknown) => {
-  if (value === null || value === undefined) return "";
-  if (typeof value === "boolean") return value ? "true" : "false";
-  return String(value);
-};
 
 const getMissingHeaders = (headers: string[], requiredHeaders: string[]) =>
   requiredHeaders
@@ -114,6 +142,37 @@ export const getClient = async (): Promise<sheets_v4.Sheets> => {
 };
 
 export const getRows = async (sheetName: string) => {
+  if (shouldUseSupabase(sheetName)) {
+    try {
+      const supabase = getSupabaseAdminClient();
+      const rows: Record<string, string>[] = [];
+
+      for (let offset = 0; ; offset += SUPABASE_PAGE_SIZE) {
+        const { data, error } = await supabase
+          .from(sheetName)
+          .select("*")
+          .range(offset, offset + SUPABASE_PAGE_SIZE - 1);
+
+        if (error) {
+          throw error;
+        }
+
+        const page = (data ?? []).map((row) =>
+          normalizeSupabaseRow(row as Record<string, unknown>)
+        );
+        rows.push(...page);
+
+        if (page.length < SUPABASE_PAGE_SIZE) {
+          break;
+        }
+      }
+
+      return rows;
+    } catch (error) {
+      throw sanitizeError(error, `Erro ao ler dados da tabela "${sheetName}" no Supabase.`);
+    }
+  }
+
   try {
     const sheets = await getClient();
     const spreadsheetId = env.SHEETS_SPREADSHEET_ID;
@@ -145,6 +204,22 @@ export const appendRow = async (
   sheetName: string,
   rowObject: Record<string, unknown>
 ) => {
+  if (shouldUseSupabase(sheetName)) {
+    try {
+      const supabase = getSupabaseAdminClient();
+      const { error } = await supabase.from(sheetName).insert(serializeRowObject(rowObject));
+
+      if (error) {
+        throw error;
+      }
+
+      invalidateCache(`sheet:${sheetName}`);
+      return { ok: true };
+    } catch (error) {
+      throw sanitizeError(error, `Erro ao inserir dados na tabela "${sheetName}" no Supabase.`);
+    }
+  }
+
   try {
     const sheets = await getClient();
     const spreadsheetId = env.SHEETS_SPREADSHEET_ID;
@@ -174,6 +249,28 @@ export const appendRow = async (
 };
 
 export const findById = async (sheetName: string, idField: string, idValue: string) => {
+  if (shouldUseSupabase(sheetName)) {
+    try {
+      const supabase = getSupabaseAdminClient();
+      const { data, error } = await supabase
+        .from(sheetName)
+        .select("*")
+        .eq(idField, idValue)
+        .maybeSingle();
+
+      if (error) {
+        throw error;
+      }
+
+      return data ? normalizeSupabaseRow(data as Record<string, unknown>) : null;
+    } catch (error) {
+      throw sanitizeError(
+        error,
+        `Erro ao buscar registro na tabela "${sheetName}" no Supabase.`
+      );
+    }
+  }
+
   const rows = await getRows(sheetName);
   const target = normalizeValue(idValue);
   return rows.find((row) => normalizeValue(row[idField]) === target) ?? null;
@@ -185,6 +282,28 @@ export const updateRowById = async (
   idValue: string,
   patchObject: Record<string, unknown>
 ) => {
+  if (shouldUseSupabase(sheetName)) {
+    try {
+      const supabase = getSupabaseAdminClient();
+      const { error } = await supabase
+        .from(sheetName)
+        .update(serializeRowObject(patchObject))
+        .eq(idField, idValue);
+
+      if (error) {
+        throw error;
+      }
+
+      invalidateCache(`sheet:${sheetName}`);
+      return { ok: true };
+    } catch (error) {
+      throw sanitizeError(
+        error,
+        `Erro ao atualizar dados na tabela "${sheetName}" no Supabase.`
+      );
+    }
+  }
+
   try {
     const sheets = await getClient();
     const spreadsheetId = env.SHEETS_SPREADSHEET_ID;
