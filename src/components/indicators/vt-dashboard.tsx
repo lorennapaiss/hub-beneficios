@@ -5,17 +5,11 @@ import * as XLSX from "xlsx";
 import type { LucideIcon } from "lucide-react";
 import { ArrowUpDown, Bus, CalendarDays, HandCoins, PiggyBank, Users } from "lucide-react";
 import { AiInsightsBox } from "@/components/indicators/ai-insights-box";
+import { MultiFilter, matchesMulti } from "@/components/indicators/multi-filter";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { classifyRole, ROLE_GROUPS } from "@/lib/role-group";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 import {
   Table,
@@ -47,6 +41,7 @@ type SavedView = {
   selectedYears: string[];
   selectedMonths: string[];
   selectedBrands: string[];
+  selectedRoleGroups: string[];
   selectedRoles: string[];
   selectedEconomy: string[];
   collaborator: string;
@@ -93,11 +88,6 @@ const dimensionValue = (row: TransportRecord, dimension: GroupDimension) => {
 const sortByValueDesc = (entries: [string, number][]) =>
   [...entries].sort((a, b) => b[1] - a[1]);
 
-const toggleValue = (items: string[], value: string) =>
-  items.includes(value) ? items.filter((item) => item !== value) : [...items, value];
-
-const matchesMulti = (selected: string[], value: string) =>
-  selected.length === 0 || selected.includes(value);
 
 const buildComparisonRows = (
   rowsA: TransportRecord[],
@@ -131,52 +121,6 @@ const buildComparisonRows = (
     .sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
 };
 
-function MultiFilter({
-  label,
-  options,
-  selected,
-  onChange,
-}: {
-  label: string;
-  options: string[];
-  selected: string[];
-  onChange: (next: string[]) => void;
-}) {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button type="button" variant="outline" className="justify-between">
-          <span>{label}</span>
-          <span className="text-xs text-muted-foreground">
-            {selected.length === 0 ? "Todos" : `${selected.length} selecionado(s)`}
-          </span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-64">
-        <DropdownMenuLabel>{label}</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuCheckboxItem
-          checked={selected.length === 0}
-          onCheckedChange={(checked) => {
-            if (checked) onChange([]);
-          }}
-        >
-          Todos
-        </DropdownMenuCheckboxItem>
-        <DropdownMenuSeparator />
-        {options.map((option) => (
-          <DropdownMenuCheckboxItem
-            key={option}
-            checked={selected.includes(option)}
-            onCheckedChange={() => onChange(toggleValue(selected, option))}
-          >
-            {option}
-          </DropdownMenuCheckboxItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
 
 const modeClass = (mode: "A" | "B" | "C") =>
   mode === "A" ? "indicator-layout-a" : mode === "C" ? "indicator-layout-c" : "indicator-layout-b";
@@ -185,6 +129,7 @@ export function VtDashboard({ records, mode = "B" }: VtDashboardProps) {
   const [selectedYears, setSelectedYears] = useState<string[]>([]);
   const [selectedMonths, setSelectedMonths] = useState<string[]>([]);
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
+  const [selectedRoleGroups, setSelectedRoleGroups] = useState<string[]>([]);
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [selectedEconomy, setSelectedEconomy] = useState<string[]>([]);
   const [collaborator, setCollaborator] = useState("");
@@ -233,6 +178,7 @@ export function VtDashboard({ records, mode = "B" }: VtDashboardProps) {
       years,
       months,
       brands,
+      roleGroups: [...ROLE_GROUPS],
       roles,
       economy: ["Com economia", "Sem economia"],
     };
@@ -252,6 +198,7 @@ export function VtDashboard({ records, mode = "B" }: VtDashboardProps) {
       if (!matchesMulti(selectedYears, yearValue)) return false;
       if (!matchesMulti(selectedMonths, monthValue)) return false;
       if (!matchesMulti(selectedBrands, brandValue)) return false;
+      if (selectedRoleGroups.length > 0 && !selectedRoleGroups.includes(classifyRole(roleValue))) return false;
       if (!matchesMulti(selectedRoles, roleValue)) return false;
       if (!matchesMulti(selectedEconomy, economyValue)) return false;
 
@@ -268,6 +215,7 @@ export function VtDashboard({ records, mode = "B" }: VtDashboardProps) {
     selectedYears,
     selectedMonths,
     selectedBrands,
+    selectedRoleGroups,
     selectedRoles,
     selectedEconomy,
   ]);
@@ -600,6 +548,7 @@ export function VtDashboard({ records, mode = "B" }: VtDashboardProps) {
       selectedYears,
       selectedMonths,
       selectedBrands,
+      selectedRoleGroups,
       selectedRoles,
       selectedEconomy,
       collaborator,
@@ -612,6 +561,7 @@ export function VtDashboard({ records, mode = "B" }: VtDashboardProps) {
     setSelectedYears(view.selectedYears);
     setSelectedMonths(view.selectedMonths);
     setSelectedBrands(view.selectedBrands);
+    setSelectedRoleGroups(view.selectedRoleGroups ?? []);
     setSelectedRoles(view.selectedRoles);
     setSelectedEconomy(view.selectedEconomy);
     setCollaborator(view.collaborator);
@@ -621,6 +571,7 @@ export function VtDashboard({ records, mode = "B" }: VtDashboardProps) {
     setSelectedYears([]);
     setSelectedMonths([]);
     setSelectedBrands([]);
+    setSelectedRoleGroups([]);
     setSelectedRoles([]);
     setSelectedEconomy([]);
     setCollaborator("");
@@ -701,11 +652,12 @@ export function VtDashboard({ records, mode = "B" }: VtDashboardProps) {
 
   return (
     <section className={`indicator-page ${modeClass(mode)} space-y-4`}>
-      <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+      <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-7">
         <MultiFilter label="Ano" options={options.years} selected={selectedYears} onChange={setSelectedYears} />
         <MultiFilter label="Mes" options={options.months} selected={selectedMonths} onChange={setSelectedMonths} />
         <Input placeholder="Colaborador" value={collaborator} onChange={(event) => setCollaborator(event.target.value)} />
         <MultiFilter label="Marca" options={options.brands} selected={selectedBrands} onChange={setSelectedBrands} />
+        <MultiFilter label="Grupo" options={options.roleGroups} selected={selectedRoleGroups} onChange={setSelectedRoleGroups} />
         <MultiFilter label="Cargo" options={options.roles} selected={selectedRoles} onChange={setSelectedRoles} />
         <MultiFilter label="Economia" options={options.economy} selected={selectedEconomy} onChange={setSelectedEconomy} />
       </div>

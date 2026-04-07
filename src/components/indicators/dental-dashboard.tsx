@@ -4,10 +4,12 @@ import { useMemo, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import { CalendarDays, HandCoins, ShieldCheck, Users } from "lucide-react";
 import { AiInsightsBox } from "@/components/indicators/ai-insights-box";
+import { MultiFilter, matchesMulti } from "@/components/indicators/multi-filter";
 import { TrendChart } from "@/components/indicators/trend-chart";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
+import { classifyRole, ROLE_GROUPS } from "@/lib/role-group";
 import {
   Table,
   TableBody,
@@ -48,6 +50,8 @@ export function DentalDashboard({ records, mode = "B" }: DentalDashboardProps) {
   const [brand, setBrand] = useState("all");
   const [operator, setOperator] = useState("all");
   const [plan, setPlan] = useState("all");
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+  const [selectedRoleGroups, setSelectedRoleGroups] = useState<string[]>([]);
   const [person, setPerson] = useState("");
   const [detailPage, setDetailPage] = useState(1);
   const detailPageSize = 25;
@@ -62,6 +66,8 @@ export function DentalDashboard({ records, mode = "B" }: DentalDashboardProps) {
       brands: uniq(records.map((r) => r.brand || "Nao informado")),
       operators: uniq(records.map((r) => r.operator || "Nao informado")),
       plans: uniq(records.map((r) => r.plan || "Nao informado")),
+      roles: uniq(records.map((r) => r.role || "Nao informado")),
+      roleGroups: [...ROLE_GROUPS],
     };
   }, [records]);
 
@@ -74,6 +80,8 @@ export function DentalDashboard({ records, mode = "B" }: DentalDashboardProps) {
       if (brand !== "all" && (row.brand || "Nao informado") !== brand) return false;
       if (operator !== "all" && (row.operator || "Nao informado") !== operator) return false;
       if (plan !== "all" && (row.plan || "Nao informado") !== plan) return false;
+      if (!matchesMulti(selectedRoles, row.role || "Nao informado")) return false;
+      if (selectedRoleGroups.length > 0 && !selectedRoleGroups.includes(classifyRole(row.role || "Nao informado"))) return false;
 
       if (query) {
         const text = `${row.holderName} ${row.employeeName} ${row.employeeId}`.toLowerCase();
@@ -82,7 +90,7 @@ export function DentalDashboard({ records, mode = "B" }: DentalDashboardProps) {
 
       return true;
     });
-  }, [records, year, month, brand, operator, plan, debouncedPerson]);
+  }, [records, year, month, brand, operator, plan, selectedRoles, selectedRoleGroups, debouncedPerson]);
 
   const metrics = useMemo(() => {
     const totalCost = sum(filtered.map((r) => r.amount));
@@ -158,6 +166,8 @@ export function DentalDashboard({ records, mode = "B" }: DentalDashboardProps) {
         brand,
         operator,
         plan,
+        roles: selectedRoles,
+        roleGroups: selectedRoleGroups,
         query: debouncedPerson || null,
       },
       totalCost: metrics.custoAcumulado,
@@ -168,7 +178,7 @@ export function DentalDashboard({ records, mode = "B" }: DentalDashboardProps) {
       monthlyCost: metrics.custoMensal.slice(-6),
       rows: filtered.length,
     }),
-    [year, month, brand, operator, plan, debouncedPerson, metrics, filtered.length],
+    [year, month, brand, operator, plan, selectedRoles, selectedRoleGroups, debouncedPerson, metrics, filtered.length],
   );
 
   const maxFromList = (
@@ -195,7 +205,7 @@ export function DentalDashboard({ records, mode = "B" }: DentalDashboardProps) {
 
   return (
     <section className={`indicator-page ${modeClass(mode)} space-y-4`}>
-      <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+      <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-8">
         <Select
           value={year}
           onChange={(e) => {
@@ -246,6 +256,18 @@ export function DentalDashboard({ records, mode = "B" }: DentalDashboardProps) {
           <option value="all">Plano</option>
           {options.plans.map((item) => <option key={item} value={item}>{item}</option>)}
         </Select>
+        <MultiFilter
+          label="Grupo"
+          options={options.roleGroups}
+          selected={selectedRoleGroups}
+          onChange={(next) => { setSelectedRoleGroups(next); setDetailPage(1); }}
+        />
+        <MultiFilter
+          label="Cargo"
+          options={options.roles}
+          selected={selectedRoles}
+          onChange={(next) => { setSelectedRoles(next); setDetailPage(1); }}
+        />
         <Input
           value={person}
           onChange={(e) => {

@@ -4,8 +4,10 @@ import { useMemo, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import { CalendarDays, HandCoins, Users } from "lucide-react";
 import { AiInsightsBox } from "@/components/indicators/ai-insights-box";
+import { MultiFilter, matchesMulti } from "@/components/indicators/multi-filter";
 import { TrendChart } from "@/components/indicators/trend-chart";
 import { Select } from "@/components/ui/select";
+import { classifyRole, ROLE_GROUPS } from "@/lib/role-group";
 import {
   Table,
   TableBody,
@@ -46,7 +48,8 @@ export function MealDashboard({ records, mode = "B" }: MealDashboardProps) {
   const [year, setYear] = useState("all");
   const [month, setMonth] = useState("all");
   const [brand, setBrand] = useState("all");
-  const [role, setRole] = useState("all");
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+  const [selectedRoleGroups, setSelectedRoleGroups] = useState<string[]>([]);
   const [personType, setPersonType] = useState("all");
   const [detailGroupBy, setDetailGroupBy] = useState<"employee" | "brand" | "benefit">("employee");
   const [detailPage, setDetailPage] = useState(1);
@@ -63,6 +66,7 @@ export function MealDashboard({ records, mode = "B" }: MealDashboardProps) {
       ),
       brands: unique(records.map((row) => row.brand || "Nao informado")),
       roles: unique(records.map((row) => row.role || "Nao informado")),
+      roleGroups: [...ROLE_GROUPS],
       personTypes: unique(records.map((row) => row.personType || "Nao informado")),
     };
   }, [records]);
@@ -73,11 +77,12 @@ export function MealDashboard({ records, mode = "B" }: MealDashboardProps) {
         if (year !== "all" && String(row.year) !== year) return false;
         if (month !== "all" && monthKey(row.year, row.month) !== month) return false;
         if (brand !== "all" && (row.brand || "Nao informado") !== brand) return false;
-        if (role !== "all" && (row.role || "Nao informado") !== role) return false;
+        if (!matchesMulti(selectedRoles, row.role || "Nao informado")) return false;
+        if (selectedRoleGroups.length > 0 && !selectedRoleGroups.includes(classifyRole(row.role || "Nao informado"))) return false;
         if (personType !== "all" && (row.personType || "Nao informado") !== personType) return false;
         return true;
       }),
-    [records, year, month, brand, role, personType],
+    [records, year, month, brand, selectedRoles, selectedRoleGroups, personType],
   );
 
   const stats = useMemo(() => {
@@ -125,7 +130,7 @@ export function MealDashboard({ records, mode = "B" }: MealDashboardProps) {
 
   const insightsContext = useMemo(
     () => ({
-      filters: { year, month, brand, role, personType },
+      filters: { year, month, brand, roles: selectedRoles, roleGroups: selectedRoleGroups, personType },
       totalCost: stats.custoTotal,
       avgMonthlyCost: stats.mediaMensal,
       avgCostPerPerson: stats.mediaPorColaborador,
@@ -136,7 +141,7 @@ export function MealDashboard({ records, mode = "B" }: MealDashboardProps) {
       monthlyCost: stats.custoMensal.slice(-6),
       rows: filtered.length,
     }),
-    [year, month, brand, role, personType, stats, filtered.length],
+    [year, month, brand, selectedRoles, selectedRoleGroups, personType, stats, filtered.length],
   );
 
   const rollupGroups = useMemo(() => {
@@ -187,7 +192,7 @@ export function MealDashboard({ records, mode = "B" }: MealDashboardProps) {
 
   return (
     <section className={`indicator-page ${modeClass(mode)} space-y-4`}>
-      <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-5">
+      <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-7">
         <Select value={year} onChange={(e) => setYear(e.target.value)}>
           <option value="all">Ano</option>
           {options.years.map((value) => (
@@ -212,14 +217,8 @@ export function MealDashboard({ records, mode = "B" }: MealDashboardProps) {
             </option>
           ))}
         </Select>
-        <Select value={role} onChange={(e) => setRole(e.target.value)}>
-          <option value="all">Cargo</option>
-          {options.roles.map((value) => (
-            <option key={value} value={value}>
-              {value}
-            </option>
-          ))}
-        </Select>
+        <MultiFilter label="Grupo" options={options.roleGroups} selected={selectedRoleGroups} onChange={setSelectedRoleGroups} />
+        <MultiFilter label="Cargo" options={options.roles} selected={selectedRoles} onChange={setSelectedRoles} />
         <Select value={personType} onChange={(e) => setPersonType(e.target.value)}>
           <option value="all">Tipo Pessoa</option>
           {options.personTypes.map((value) => (

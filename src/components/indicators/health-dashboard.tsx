@@ -4,10 +4,12 @@ import { useMemo, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import { Activity, BadgePercent, HandCoins, HeartPulse, Users } from "lucide-react";
 import { AiInsightsBox } from "@/components/indicators/ai-insights-box";
+import { MultiFilter, matchesMulti } from "@/components/indicators/multi-filter";
 import { TrendChart } from "@/components/indicators/trend-chart";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
+import { classifyRole, ROLE_GROUPS } from "@/lib/role-group";
 import type { HealthCopartRecord, HealthRecord } from "@/server/indicators/dashboard";
 
 type HealthDashboardProps = {
@@ -51,7 +53,8 @@ export function HealthDashboard({ records, copartRecords, mode = "B" }: HealthDa
   const [year, setYear] = useState("all");
   const [month, setMonth] = useState("all");
   const [brand, setBrand] = useState("all");
-  const [role, setRole] = useState("all");
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+  const [selectedRoleGroups, setSelectedRoleGroups] = useState<string[]>([]);
   const [status, setStatus] = useState("all");
   const [holderType, setHolderType] = useState("all");
   const [person, setPerson] = useState("");
@@ -65,6 +68,7 @@ export function HealthDashboard({ records, copartRecords, mode = "B" }: HealthDa
       months: Array.from({ length: 12 }, (_, index) => String(index + 1)),
       brands: uniq(records.map((r) => r.brand || "Nao informado")),
       roles: uniq(records.map((r) => r.role || "Nao informado")),
+      roleGroups: [...ROLE_GROUPS],
       statuses: uniq(records.map((r) => r.status || "Nao informado")),
       holderTypes: uniq(records.map((r) => r.holderType || "Nao informado")),
     };
@@ -76,7 +80,8 @@ export function HealthDashboard({ records, copartRecords, mode = "B" }: HealthDa
       if (year !== "all" && String(row.year) !== year) return false;
       if (month !== "all" && String(row.month) !== month) return false;
       if (brand !== "all" && (row.brand || "Nao informado") !== brand) return false;
-      if (role !== "all" && (row.role || "Nao informado") !== role) return false;
+      if (!matchesMulti(selectedRoles, row.role || "Nao informado")) return false;
+      if (selectedRoleGroups.length > 0 && !selectedRoleGroups.includes(classifyRole(row.role || "Nao informado"))) return false;
       if (status !== "all" && (row.status || "Nao informado") !== status) return false;
       if (holderType !== "all" && (row.holderType || "Nao informado") !== holderType) return false;
       if (query) {
@@ -85,7 +90,7 @@ export function HealthDashboard({ records, copartRecords, mode = "B" }: HealthDa
       }
       return true;
     });
-  }, [records, year, month, brand, role, status, holderType, debouncedPerson]);
+  }, [records, year, month, brand, selectedRoles, selectedRoleGroups, status, holderType, debouncedPerson]);
 
   const filteredPremiumRows = useMemo(
     () => filteredMain.filter((row) => row.premiumAmount > 0),
@@ -106,7 +111,7 @@ export function HealthDashboard({ records, copartRecords, mode = "B" }: HealthDa
 
   const filteredCopart = useMemo(() => {
     const query = debouncedPerson.trim().toLowerCase();
-    const restrictByMain = role !== "all" || status !== "all" || holderType !== "all";
+    const restrictByMain = selectedRoles.length > 0 || selectedRoleGroups.length > 0 || status !== "all" || holderType !== "all";
 
     return copartRecords.filter((row) => {
       if (year !== "all" && String(row.year) !== year) return false;
@@ -122,7 +127,7 @@ export function HealthDashboard({ records, copartRecords, mode = "B" }: HealthDa
       }
       return true;
     });
-  }, [copartRecords, year, month, brand, debouncedPerson, role, status, holderType, selectedPeople]);
+  }, [copartRecords, year, month, brand, debouncedPerson, selectedRoles, selectedRoleGroups, status, holderType, selectedPeople]);
 
   const metrics = useMemo(() => {
     const totalPremium = sum(filteredPremiumRows.map((r) => r.premiumAmount));
@@ -210,7 +215,8 @@ export function HealthDashboard({ records, copartRecords, mode = "B" }: HealthDa
         year,
         month,
         brand,
-        role,
+        roles: selectedRoles,
+        roleGroups: selectedRoleGroups,
         status,
         holderType,
         query: debouncedPerson || null,
@@ -234,7 +240,8 @@ export function HealthDashboard({ records, copartRecords, mode = "B" }: HealthDa
       year,
       month,
       brand,
-      role,
+      selectedRoles,
+      selectedRoleGroups,
       status,
       holderType,
       debouncedPerson,
@@ -249,7 +256,7 @@ export function HealthDashboard({ records, copartRecords, mode = "B" }: HealthDa
 
   return (
     <section className={`indicator-page ${modeClass(mode)} space-y-4`}>
-      <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-7">
+      <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-9">
         <Select value={year} onChange={(e) => setYear(e.target.value)}>
           <option value="all">Ano</option>
           {options.years.map((item) => <option key={item} value={item}>{item}</option>)}
@@ -262,10 +269,8 @@ export function HealthDashboard({ records, copartRecords, mode = "B" }: HealthDa
           <option value="all">Marca</option>
           {options.brands.map((item) => <option key={item} value={item}>{item}</option>)}
         </Select>
-        <Select value={role} onChange={(e) => setRole(e.target.value)}>
-          <option value="all">Cargo</option>
-          {options.roles.map((item) => <option key={item} value={item}>{item}</option>)}
-        </Select>
+        <MultiFilter label="Grupo" options={options.roleGroups} selected={selectedRoleGroups} onChange={setSelectedRoleGroups} />
+        <MultiFilter label="Cargo" options={options.roles} selected={selectedRoles} onChange={setSelectedRoles} />
         <Select value={status} onChange={(e) => setStatus(e.target.value)}>
           <option value="all">Situacao</option>
           {options.statuses.map((item) => <option key={item} value={item}>{item}</option>)}
