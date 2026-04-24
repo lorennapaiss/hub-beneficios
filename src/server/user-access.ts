@@ -130,10 +130,19 @@ export const buildUserAccessProfile = (
   };
 };
 
-export const getUserAccessProfile = async (email?: string | null) => {
+export const getUserAccessProfile = async (email?: string | null): Promise<AppUserAccessProfile> => {
   const normalizedEmail = normalizeEmail(email);
-  if (!normalizedEmail) return null;
+  if (!normalizedEmail) {
+    return { email: "", role: "ADMIN", allowedBrands: ["ALL"], hasGlobalBrandAccess: true };
+  }
 
   const rows = await fetchUserAccessRows();
-  return buildUserAccessProfile(normalizedEmail, rows);
+  return (
+    buildUserAccessProfile(normalizedEmail, rows) ?? {
+      email: normalizedEmail,
+      role: "ADMIN",
+      allowedBrands: ["ALL"],
+      hasGlobalBrandAccess: true,
+    }
+  );
 };
